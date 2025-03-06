@@ -4,7 +4,7 @@ LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
 ASM_SOURCES := src/gdt.s src/interrupt.s
-C_SOURCES := src/gdt.c src/interrupt.c src/main.c
+C_SOURCES := src/common.c src/gdt.c src/interrupt.c src/main.c
 ASM_OBJECTS := $(patsubst src/%.s,build/%.s.o,$(ASM_SOURCES))
 C_OBJECTS := $(patsubst src/%.c,build/%.c.o,$(C_SOURCES))
 

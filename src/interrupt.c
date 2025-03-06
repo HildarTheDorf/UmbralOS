@@ -1,5 +1,5 @@
 #include "intel.h"
-#include <stdint.h>
+#include "common.h"
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -297,7 +297,10 @@ static struct idt_entry IDT[IDT_IDX_MAX] = {
 #undef I
 
 void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
-    
+    switch (vector) {
+    default:
+        panic("Unhandled Interrupt 0x%x", vector);
+    }
 }
 
 #define I(X) \
