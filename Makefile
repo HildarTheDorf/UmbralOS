@@ -13,6 +13,7 @@ all: umbralos.iso
 
 clean:
 	rm -f build/*
+	rm -f iso_root/boot/umbralos.bin
 	rm -f umbralos.iso
 
 run: umbralos.iso
