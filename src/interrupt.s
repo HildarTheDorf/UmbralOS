@@ -4,8 +4,8 @@
 .align 16
 interrupt_stub_\idx:
     sub $0x10, %rsp
-    push %rsi
-    mov $\idx, %esi
+    push %rdi
+    mov $\idx, %edi
     jmp generic_interrupt_stub
 .endm                   
 
@@ -15,8 +15,8 @@ interrupt_stub_\idx:
 .align 16
 interrupt_stub_\idx:
     sub $0x8, %rsp
-    push %rsi
-    mov $\idx, %esi
+    push %rdi
+    mov $\idx, %edi
     jmp generic_interrupt_stub
 .endm
 
@@ -26,23 +26,23 @@ generic_interrupt_stub:
     push %rax
     push %rcx
     push %rdx
-    push %rdi
+    push %rsi
     push %r8
     push %r9
     push %r10
     push %r11
     cld
-    mov %rsp, %rdi
+    mov %rsp, %rsi
     call interrupt_handler
     pop %r11
     pop %r10
     pop %r9
     pop %r8
-    pop %rdi
+    pop %rsi
     pop %rdx
     pop %rcx
     pop %rax
-    pop %rsi
+    pop %rdi
     add $0x10, %rsp
     iretq
 .size generic_interrupt_stub, . - generic_interrupt_stub

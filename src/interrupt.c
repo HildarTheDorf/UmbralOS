@@ -1,5 +1,6 @@
 #include "intel.h"
 #include "common.h"
+#include <stdint.h>
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -264,13 +265,12 @@ struct stack_frame {
     uint64_t r10;
     uint64_t r9;
     uint64_t r8;
-    uint64_t rdi;
+    uint64_t rsi;
     uint64_t rdx;
     uint64_t rcx;
     uint64_t rax;
-    uint64_t rsi;
+    uint64_t rdi;
     uint64_t reserved;
-
     uint64_t error_code;
     uint64_t rip;
     uint64_t cs;
@@ -297,9 +297,26 @@ static struct idt_entry IDT[IDT_IDX_MAX] = {
 #undef I
 
 void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
+    kprint("r11: 0x%lx\n", stack_frame->r11);
+    kprint("r10: 0x%lx\n", stack_frame->r10);
+    kprint("r9: 0x%lx\n", stack_frame->r9);
+    kprint("r8: 0x%lx\n", stack_frame->r8);
+    kprint("rsi: 0x%lx\n", stack_frame->rsi);
+    kprint("rdx: 0x%lx\n", stack_frame->rdx);
+    kprint("rcx: 0x%lx\n", stack_frame->rcx);   
+    kprint("rax: 0x%lx\n", stack_frame->rax);
+    kprint("rdi: 0x%lx\n", stack_frame->rdi);
+    kprint("reserved: 0x%lx\n", stack_frame->reserved);
+    kprint("error_code: 0x%lx\n", stack_frame->error_code);
+    kprint("rip: 0x%lx\n", stack_frame->rip);
+    kprint("cs: 0x%lx\n", stack_frame->cs);
+    kprint("rflags: 0x%lx\n", stack_frame->rflags);
+    kprint("rsp: 0x%lx\n", stack_frame->rsp);
+    kprint("ss: 0x%lx\n", stack_frame->ss);
+
     switch (vector) {
     default:
-        panic("Unhandled Interrupt 0x%x", vector);
+        panic("Unhandled Interrupt %u\n", vector);
     }
 }
 
