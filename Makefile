@@ -2,6 +2,8 @@ CC := clang
 CFLAGS := $(shell cat compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
+QEMU := qemu-system-x86_64
+QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
 
 ASM_SOURCES := gdt.s interrupt.s main.s
 C_SOURCES := common.c gdt.c interrupt.c main.c serial.c
@@ -23,7 +25,13 @@ clean:
 	rm -f umbralos.iso
 
 run: umbralos.iso
-	qemu-system-x86_64 --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio -cdrom $<
+	$(QEMU) $(QEMU_FLAGS) -cpu qemu64,x2apic,smap,smep,umip -cdrom $<
+
+run-kvm: umbralos.iso
+	$(QEMU) $(QEMU_FLAGS) --enable-kvm -cdrom $<
+
+run-uefi: umbralos.iso
+	$(QEMU) $(QEMU_FLAGS) --enable-kvm -bios /usr/share/ovmf/OVMF.fd -cdrom $<
 
 build/%.s.o: src/%.s
 	$(CC) $(ASMFLAGS) -c $^ -o $@ 
