@@ -285,7 +285,7 @@ FOR_EACH_INTERRUPT
 
 #define I(X) [X] = { \
     .segment_selector = MAKE_DESRIPTOR(GDT_IDX_CODE64, PL_KERNEL), \
-    .type = GDT_SYS_TYPE_INTR64, \
+    .type = DT_SYS_TYPE_INTR64, \
     .p = 1 \
 },
 

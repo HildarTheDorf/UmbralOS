@@ -4,19 +4,19 @@
 
 #define MAKE_DESRIPTOR(idx, pl) (uint16_t)(idx << 3 | pl)
 
+#define DT_SYS_TYPE_LDT 0x2
+#define DT_SYS_TYPE_TSS64_AVAIL 0x9
+#define DT_SYS_TYPE_TSS64_BUSY 0xB
+#define DT_SYS_TYPE_TSS64_BUSY 0xB
+#define DT_SYS_TYPE_CALL64 0xC
+#define DT_SYS_TYPE_INTR64 0xE
+#define DT_SYS_TYPE_TRAP64 0xF
+
 #define GDT_IDX_NULL 0
 #define GDT_IDX_CODE64 1
 #define GDT_IDX_DATA64 2
 #define GDT_IDX_TSS 3
 #define GDT_IDX_MAX 5
-
-#define GDT_SYS_TYPE_LDT 0x2
-#define GDT_SYS_TYPE_TSS64_AVAIL 0x9
-#define GDT_SYS_TYPE_TSS64_BUSY 0xB
-#define GDT_SYS_TYPE_TSS64_BUSY 0xB
-#define GDT_SYS_TYPE_CALL64 0xC
-#define GDT_SYS_TYPE_INTR64 0xE
-#define GDT_SYS_TYPE_TRAP64 0xF
 
 #define IDT_IDX_MAX 256
 
