@@ -162,9 +162,7 @@ static union gdt_entry GDT[GDT_IDX_MAX] = {
 };
 
 __attribute((aligned(16)))
-static struct idt_entry IDT[IDT_IDX_MAX] = {
-
-};
+static struct idt_entry IDT[IDT_IDX_MAX];
 
 [[noreturn]] static void halt(void) {
     __asm("cli");
