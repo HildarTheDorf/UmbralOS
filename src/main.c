@@ -166,7 +166,7 @@ static struct idt_entry IDT[IDT_IDX_MAX] = {
 
 };
 
-[[noreturn]] static void halt() {
+[[noreturn]] static void halt(void) {
     __asm("cli");
     while (true) {
         __asm("hlt");
@@ -205,7 +205,7 @@ static void load_idt(void) {
     __asm("lidt %0" : : "m"(idtr));
 }
 
-[[noreturn]] void _start() {
+[[noreturn]] void _start(void) {
     load_gdt();         
     load_idt();
 
