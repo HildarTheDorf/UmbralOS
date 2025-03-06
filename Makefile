@@ -1,11 +1,17 @@
 CC := clang
-CFLAGS := $(shell cat src/compile_flags.txt)
+CFLAGS := $(shell cat compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
+ASM_SOURCES := src/gdt.s src/interrupt.s
+C_SOURCES := src/gdt.c src/interrupt.c src/main.c
+ASM_OBJECTS := $(patsubst src/%.s,build/%.s.o,$(ASM_SOURCES))
+C_OBJECTS := $(patsubst src/%.c,build/%.c.o,$(C_SOURCES))
+
+ALL_OBJECTS := $(ASM_OBJECTS) $(C_OBJECTS)
 ESP_DIRECTORY := iso_root/EFI/boot
 LIMINE_DIRECTORY := iso_root/boot/limine
-LIMINE_FILES := ${LIMINE_DIRECTORY}/limine-bios-cd.bin ${LIMINE_DIRECTORY}/limine-bios.sys ${LIMINE_DIRECTORY}/limine-uefi-cd.bin ${ESP_DIRECTORY}/BOOTIA32.EFI ${ESP_DIRECTORY}/BOOTX64.EFI
+LIMINE_FILES := $(LIMINE_DIRECTORY)/limine-bios-cd.bin $(LIMINE_DIRECTORY)/limine-bios.sys $(LIMINE_DIRECTORY)/limine-uefi-cd.bin $(ESP_DIRECTORY)/BOOTIA32.EFI $(ESP_DIRECTORY)/BOOTX64.EFI
 
 .PHONY: all clean run
 
@@ -20,15 +26,15 @@ run: umbralos.iso
 	qemu-system-x86_64 --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log -cdrom $<
 
 build/%.s.o: src/%.s
-	${CC} ${ASMFLAGS} -c $^ -o $@ 
+	$(CC) $(ASMFLAGS) -c $^ -o $@ 
 
-build/%.o: src/%.c
-	${CC} ${CFLAGS} -c $^ -o $@ 
+build/%.c.o: src/%.c
+	$(CC) $(CFLAGS) -c $^ -o $@ 
 
-iso_root/boot/umbralos.bin: build/main.o build/main.s.o
-	${LD} ${LDFLAGS} $^ -o $@
+iso_root/boot/umbralos.bin: $(ALL_OBJECTS)
+	$(LD) $(LDFLAGS) $^ -o $@
 
-umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf ${LIMINE_FILES}
+umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(LIMINE_FILES)
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
 		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \

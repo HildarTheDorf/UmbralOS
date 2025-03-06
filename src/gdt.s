@@ -1,5 +1,6 @@
 .global flush_gdt
 .type flush_gdt, function
+.align 16
 flush_gdt:
     mov %esi, %ds
     mov %esi, %ss
@@ -11,9 +12,3 @@ flush_gdt:
     push %rsi
     lretq
 .size flush_gdt, . - flush_gdt
-
-.global interrupt_handler
-.type interrupt_handler, function
-interrupt_handler:
-    iretq
-.size interrupt_handler, . - interrupt_handler
