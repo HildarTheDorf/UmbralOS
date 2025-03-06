@@ -1,0 +1,10 @@
+--std=c23
+-Wall
+-Wextra
+-Wpedantic
+-nostdlib
+-ffreestanding
+-mno-red-zone
+-fpic
+-O2
+-g

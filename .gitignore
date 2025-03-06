@@ -2,4 +2,5 @@ build/*
 iso_root/boot/limine/*
 iso_root/EFI/boot/*
 iso_root/boot/umbralos.bin
+qemu.log
 umbralos.iso

@@ -1,5 +1,5 @@
 CC := clang
-CFLAGS := -nostdlib -ffreestanding -mno-red-zone -fpic -O2 -g
+CFLAGS := $(shell cat src/compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
@@ -17,12 +17,15 @@ clean:
 	rm -f umbralos.iso
 
 run: umbralos.iso
-	qemu-system-x86_64 -cdrom $<
+	qemu-system-x86_64 --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log -cdrom $<
+
+build/%.s.o: src/%.s
+	${CC} ${ASMFLAGS} -c $^ -o $@ 
 
 build/%.o: src/%.c
 	${CC} ${CFLAGS} -c $^ -o $@ 
 
-iso_root/boot/umbralos.bin: build/main.o
+iso_root/boot/umbralos.bin: build/main.o build/main.s.o
 	${LD} ${LDFLAGS} $^ -o $@
 
 umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf ${LIMINE_FILES}
