@@ -9,7 +9,7 @@ LIMINE_REQUESTS_START_MARKER
 LIMINE_BASE_REVISION(3)
 LIMINE_REQUESTS_END_MARKER
 
-[[noreturn]] void _start(void) {
+[[noreturn]] void main(void *stack_origin) {
     serial_init();
 
     load_gdt();         

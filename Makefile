@@ -3,7 +3,7 @@ CFLAGS := $(shell cat compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
-ASM_SOURCES := gdt.s interrupt.s
+ASM_SOURCES := gdt.s interrupt.s main.s
 C_SOURCES := common.c gdt.c interrupt.c main.c serial.c
 ASM_OBJECTS := $(patsubst %.s,build/%.s.o,$(ASM_SOURCES))
 C_OBJECTS := $(patsubst %.c,build/%.c.o,$(C_SOURCES))
