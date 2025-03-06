@@ -1,5 +1,5 @@
 CC := clang
-CFLAGS := -nostdlib -ffreestanding -fpic -O2 -g
+CFLAGS := -nostdlib -ffreestanding -mno-red-zone -fpic -O2 -g
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
