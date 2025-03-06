@@ -3,10 +3,10 @@ CFLAGS := $(shell cat compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
 
-ASM_SOURCES := src/gdt.s src/interrupt.s
-C_SOURCES := src/common.c src/gdt.c src/interrupt.c src/main.c
-ASM_OBJECTS := $(patsubst src/%.s,build/%.s.o,$(ASM_SOURCES))
-C_OBJECTS := $(patsubst src/%.c,build/%.c.o,$(C_SOURCES))
+ASM_SOURCES := gdt.s interrupt.s
+C_SOURCES := common.c gdt.c interrupt.c main.c serial.c
+ASM_OBJECTS := $(patsubst %.s,build/%.s.o,$(ASM_SOURCES))
+C_OBJECTS := $(patsubst %.c,build/%.c.o,$(C_SOURCES))
 
 ALL_OBJECTS := $(ASM_OBJECTS) $(C_OBJECTS)
 ESP_DIRECTORY := iso_root/EFI/boot
@@ -23,7 +23,7 @@ clean:
 	rm -f umbralos.iso
 
 run: umbralos.iso
-	qemu-system-x86_64 --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log -cdrom $<
+	qemu-system-x86_64 --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio -cdrom $<
 
 build/%.s.o: src/%.s
 	$(CC) $(ASMFLAGS) -c $^ -o $@ 
