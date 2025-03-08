@@ -48,6 +48,10 @@ static void print_escape(const char **p, va_list va, bool is_long) {
         ++*p;
         print_escape(p, va, true);
         break;
+    case 'p':
+        const void *p_value = va_arg(va, const void *);
+        print_unsigned((uintptr_t)p_value, 16);
+        break;
     case 's':
         print_string(va_arg(va, const char *));
         break;
