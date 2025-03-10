@@ -220,13 +220,28 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
     const Elf64_Phdr *elf_phdrs = (void *)(limine_kernel_address_response->virtual_base + elf_header->e_phoff);
     for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
         const Elf64_Phdr *phdr = &elf_phdrs[i];
-        const auto base = round_down(phdr->p_vaddr, PAGE_SIZE);
-        const auto end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
-        vmm_map(
-            limine_kernel_address_response->physical_base + base,
-            (void *)(limine_kernel_address_response->virtual_base + base),
-            end - base, elf_to_memory_flags(phdr->p_flags)
-        );
+        if (phdr->p_type == PT_LOAD) {
+            const auto base = round_down(phdr->p_vaddr, PAGE_SIZE);
+            const auto end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
+            vmm_map(
+                limine_kernel_address_response->physical_base + base,
+                (void *)(limine_kernel_address_response->virtual_base + base),
+                end - base, elf_to_memory_flags(phdr->p_flags)
+            );
+        }
+    }
+
+    for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
+        const Elf64_Phdr *phdr = &elf_phdrs[i];
+        if (phdr->p_type == PT_GNU_RELRO) {
+            const auto base = round_down(phdr->p_vaddr, PAGE_SIZE);
+            const auto end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
+            vmm_map(
+                limine_kernel_address_response->physical_base + base,
+                (void *)(limine_kernel_address_response->virtual_base + base),
+                end - base, elf_to_memory_flags(phdr->p_flags)
+            );
+        }
     }
 
     __asm("mov %0,%%cr3" : : "r"((uintptr_t)PML4 - (uintptr_t)pHHDM) : "memory");
