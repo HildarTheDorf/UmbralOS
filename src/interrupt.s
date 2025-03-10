@@ -7,6 +7,7 @@ interrupt_stub_\idx:
     push %rdi
     mov $\idx, %edi
     jmp generic_interrupt_stub
+.size interrupt_stub_\idx, . - interrupt_stub_\idx
 .endm                   
 
 .macro interrupt_stub_ec idx
@@ -18,6 +19,7 @@ interrupt_stub_\idx:
     push %rdi
     mov $\idx, %edi
     jmp generic_interrupt_stub
+.size interrupt_stub_\idx, . - interrupt_stub_\idx
 .endm
 
 .type generic_interrupt_stub, function
