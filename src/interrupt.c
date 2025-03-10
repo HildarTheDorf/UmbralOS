@@ -316,7 +316,7 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
 
     switch (vector) {
     default:
-        panic("Unhandled Interrupt %u\n", vector);
+        panic("Unhandled Interrupt 0x%x\n", vector);
     }
 }
 

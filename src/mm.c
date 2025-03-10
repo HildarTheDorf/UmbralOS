@@ -3,12 +3,11 @@
 #include "intel.h"
 
 #include <elf.h>
-
 #include <limine.h>
 #include <limits.h>
-#include <stdint.h>
 
 enum memory_flags {
+    M_NONE = 0x0,
     M_W = 0x1,
     M_X = 0x2,
     M_U = 0x4
@@ -34,6 +33,13 @@ static uint64_t round_up(uint64_t value, uint64_t multiple) {
         value = round_down(value, multiple) + multiple;
     }
     return value;
+}
+
+static enum memory_flags elf_to_memory_flags(Elf64_Word elf_flags) {
+    enum memory_flags flags = M_NONE;
+    if (elf_flags & PF_W) flags |= M_W;
+    if (elf_flags & PF_X) flags |= M_X;
+    return flags;
 }
 
 static void addr_to_bitmap_location(phy_t page, size_t *bitmap_index, uint8_t *bitmap_mask) {
@@ -153,6 +159,10 @@ static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry)
 }
 
 static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
+    if (what % PAGE_SIZE) panic("vmm_map_page: what not aligned\n");
+    if ((uintptr_t)where % PAGE_SIZE) panic("vmm_map_page: where not aligned\n");
+    if (flags & M_W && flags & M_X) panic("vmm_map_page: W|X memory is forbidden");
+
     const uint16_t pml4_index = (((uintptr_t)where) >> 39) & 0x1FF;
     struct page_directory_entry_subdirectory *pdpt = vmm_ensure_present(&PML4[pml4_index]);
 
@@ -205,8 +215,19 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
             break;
         }
     }
-    // FIXME: parse ELF, don't guess length/flags
-    vmm_map(limine_kernel_address_response->physical_base, (void *)limine_kernel_address_response->virtual_base, 102400, M_W | M_X);
 
-    __asm("mov %0,%%cr3" : : "r"((uintptr_t)PML4 - (uintptr_t)  pHHDM) : "memory");
+    const Elf64_Ehdr *elf_header = (void *)limine_kernel_address_response->virtual_base;
+    const Elf64_Phdr *elf_phdrs = (void *)(limine_kernel_address_response->virtual_base + elf_header->e_phoff);
+    for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
+        const Elf64_Phdr *phdr = &elf_phdrs[i];
+        const auto base = round_down(phdr->p_vaddr, PAGE_SIZE);
+        const auto end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
+        vmm_map(
+            limine_kernel_address_response->physical_base + base,
+            (void *)(limine_kernel_address_response->virtual_base + base),
+            end - base, elf_to_memory_flags(phdr->p_flags)
+        );
+    }
+
+    __asm("mov %0,%%cr3" : : "r"((uintptr_t)PML4 - (uintptr_t)pHHDM) : "memory");
 }
