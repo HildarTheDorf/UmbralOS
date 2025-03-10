@@ -1,5 +1,7 @@
 #include "intel.h"
 #include "common.h"
+#include "security.h"
+
 #include <stdint.h>
 
 #define FOR_EACH_INTERRUPT \
@@ -297,6 +299,8 @@ static struct idt_entry IDT[IDT_IDX_MAX] = {
 #undef I
 
 void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
+    enforce_smap();
+
     kprint("r11: 0x%lx\n", stack_frame->r11);
     kprint("r10: 0x%lx\n", stack_frame->r10);
     kprint("r9: 0x%lx\n", stack_frame->r9);
