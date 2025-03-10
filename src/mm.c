@@ -134,9 +134,55 @@ void pmm_init(const struct limine_memmap_response *limine_memmap_response, void 
     pmm_mark_range(bitmap_phy, round_up(bitmap_size, PAGE_SIZE), false);
 }
 
-static void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags) {
+static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry) {
+    if (!entry->p) {
+        const phy_t page = pmm_alloc_page();
 
+        entry->xd = 0;
+        entry->addr = page >> 12;
+        entry->ps = 0;
+        entry->a = 0;
+        entry->pcd = 0;
+        entry->pwt = 0;
+        entry->us = 0;
+        entry->rw = 1;
+        entry->p = 1;
+    }
+
+    return phy_to_virt(entry->addr << 12);
 }
+
+static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
+    const uint16_t pml4_index = (((uintptr_t)where) >> 39) & 0x1FF;
+    struct page_directory_entry_subdirectory *pdpt = vmm_ensure_present(&PML4[pml4_index]);
+
+    const uint16_t pdpt_index = (((uintptr_t)where) >> 30) & 0x1FF;
+    struct page_directory_entry_subdirectory *pd = vmm_ensure_present(&pdpt[pdpt_index]);
+
+    const uint16_t pd_index = (((uintptr_t)where) >> 21) & 0x1FF;
+    struct page_table_entry *pt = vmm_ensure_present(&pd[pd_index]);
+
+    const uint16_t pt_index = (((uintptr_t)where) >> 12) & 0x1FF;
+    pt[pt_index].xd = !(flags & M_X);
+    pt[pt_index].pk = 0x0;
+    pt[pt_index].addr = what >> 12;
+    pt[pt_index].g = 0;
+    pt[pt_index].pat = 0;
+    pt[pt_index].a = 0;
+    pt[pt_index].d = 0;
+    pt[pt_index].pcd = 0;
+    pt[pt_index].pwt = 0;
+    pt[pt_index].us = !!(flags & M_U);
+    pt[pt_index].rw = !!(flags & M_W);
+    pt[pt_index].p = 1;
+}
+
+
+static void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags) {
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        vmm_map_page(what + i, (void *)((uintptr_t)where + i), flags);
+    }
+}   
 
 void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {            
     PML4 = phy_to_virt(pmm_alloc_page());
@@ -148,7 +194,6 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         case LIMINE_MEMMAP_USABLE:
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
         case LIMINE_MEMMAP_FRAMEBUFFER:
-            kprint("Mapping 0x%lx->0x%lx (0x%lx bytes)\n", limine_memmap_entry->base, limine_memmap_entry->base + limine_memmap_entry->length, limine_memmap_entry->length);
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
             break;
         case LIMINE_MEMMAP_RESERVED:
@@ -157,12 +202,11 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         case LIMINE_MEMMAP_BAD_MEMORY:
         case LIMINE_MEMMAP_KERNEL_AND_MODULES:  
         default:
-            kprint("NOT Mapping 0x%lx->0x%lx (0x%lx bytes)\n", limine_memmap_entry->base, limine_memmap_entry->base + limine_memmap_entry->length, limine_memmap_entry->length);
             break;
         }
     }
     // FIXME: parse ELF, don't guess length/flags
     vmm_map(limine_kernel_address_response->physical_base, (void *)limine_kernel_address_response->virtual_base, 102400, M_W | M_X);
 
-    __asm("mov %0,%%cr3" : : "r"(PML4) : "memory");
+    __asm("mov %0,%%cr3" : : "r"((uintptr_t)PML4 - (uintptr_t)  pHHDM) : "memory");
 }
