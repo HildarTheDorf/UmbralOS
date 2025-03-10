@@ -101,3 +101,54 @@ struct __attribute((packed, aligned(4))) tss {
     uint16_t reserved3;
     uint16_t iomap_base;
 };
+
+struct __attribute((packed, aligned(8))) page_directory_entry_subdirectory {
+    uint64_t p        : 1;
+    uint64_t rw       : 1;
+    uint64_t us       : 1;
+    uint64_t pwt      : 1;
+    uint64_t pcd      : 1;
+    uint64_t a        : 1;
+    uint64_t avl0     : 1;
+    uint64_t ps       : 1;
+    uint64_t avl1     : 4;
+    uint64_t addr     :40;
+    uint64_t avl2     :11;
+    uint64_t xd       : 1;
+};
+
+struct __attribute((packed, aligned(8))) page_directory_entry_largepage {
+    uint64_t p        : 1;
+    uint64_t rw       : 1;
+    uint64_t us       : 1;
+    uint64_t pwt      : 1;
+    uint64_t pcd      : 1;
+    uint64_t a        : 1;
+    uint64_t d        : 1;
+    uint64_t ps       : 1;
+    uint64_t g        : 1;
+    uint64_t avl1     : 3;
+    uint64_t pat      : 1;
+    uint64_t addr     : 39;
+    uint64_t avl2     : 7;
+    uint64_t pk       : 4;
+    uint64_t xd       : 1;
+};
+
+struct __attribute((packed, aligned(8))) page_table_entry {
+    uint64_t p        : 1;
+    uint64_t rw       : 1;
+    uint64_t us       : 1;
+    uint64_t pwt      : 1;
+    uint64_t pcd      : 1;
+    uint64_t a        : 1;
+    uint64_t d        : 1;
+    uint64_t pat      : 1;
+    uint64_t g        : 1;
+    uint64_t avl1     : 3;
+    uint64_t addr     : 40;
+    uint64_t avl2     : 7;
+    uint64_t pk       : 4;
+    uint64_t xd       : 1;
+};
+

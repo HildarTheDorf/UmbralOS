@@ -96,6 +96,12 @@ void kprintv(const char *format, va_list va) {
     }
 }
 
+void memzero(void *p, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        *(char *)p = 0;
+    }
+}
+
 [[noreturn]]
 __attribute((format(printf, 1, 2)))
 void panic(const char *format, ...) {

@@ -6,7 +6,7 @@
 
 static uint8_t inb(uint16_t port) {
     uint8_t value;
-    __asm("in %1,%0" : "=a"(value) : "Nd"(port));
+    __asm volatile("in %1,%0" : "=a"(value) : "Nd"(port));
     return value;
 }
 
