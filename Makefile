@@ -2,6 +2,7 @@ CC := clang
 CFLAGS := $(shell cat compile_flags.txt)
 LD := ld.lld
 LDFLAGS := --nostdlib -pie
+M4 := m4
 QEMU := qemu-system-x86_64
 QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
 
@@ -38,6 +39,9 @@ build/%.s.o: src/%.s
 
 build/%.c.o: src/%.c
 	$(CC) $(CFLAGS) -c $^ -o $@ 
+
+iso_root/boot/limine.conf: limine.conf.m4 iso_root/boot/umbralos.bin
+	$(M4) $< > $@
 
 iso_root/boot/umbralos.bin: $(ALL_OBJECTS)
 	$(LD) $(LDFLAGS) $^ -o $@
