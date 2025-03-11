@@ -1,6 +1,6 @@
-CC := clang
+CC := gcc
 CFLAGS := $(shell cat compile_flags.txt)
-LD := ld.lld
+LD := ld
 LDFLAGS := --nostdlib -pie
 M4 := m4
 QEMU := qemu-system-x86_64
@@ -44,8 +44,8 @@ build/%.c.o: src/%.c
 iso_root/boot/limine.conf: limine.conf.m4 iso_root/boot/umbralos.bin
 	$(M4) $< > $@
 
-iso_root/boot/umbralos.bin: $(ALL_OBJECTS)
-	$(LD) $(LDFLAGS) $^ -o $@
+iso_root/boot/umbralos.bin: linker.ld $(ALL_OBJECTS)
+	$(LD) $(LDFLAGS) -T $^ -o $@
 
 umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(LIMINE_FILES)
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \

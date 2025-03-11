@@ -7,21 +7,27 @@
 
 #define DEFAULT_STACK_SIZE 0x10000
 
+[[gnu::section(".limine_requests.start")]]
 LIMINE_REQUESTS_START_MARKER
+[[gnu::section(".limine_requests")]]
 LIMINE_BASE_REVISION(3)
 
+[[gnu::section(".limine_requests")]]
 struct limine_hhdm_request limine_hhdm_request = {
     .id = LIMINE_HHDM_REQUEST
 };
 
+[[gnu::section(".limine_requests")]]
 struct limine_kernel_address_request limine_kernel_address_request = {
     .id = LIMINE_KERNEL_ADDRESS_REQUEST
 };
 
+[[gnu::section(".limine_requests")]]
 struct limine_memmap_request limine_memmap_request = {
     .id = LIMINE_MEMMAP_REQUEST,  
 };
 
+[[gnu::section(".limine_requests.end")]]
 LIMINE_REQUESTS_END_MARKER
 
 
