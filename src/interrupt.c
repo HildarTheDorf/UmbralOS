@@ -291,7 +291,7 @@ FOR_EACH_INTERRUPT
     .p = 1 \
 },
 
-__attribute((aligned(16)))
+[[gnu::aligned(16)]]
 static struct idt_entry IDT[IDT_IDX_MAX] = {
     FOR_EACH_INTERRUPT
 };

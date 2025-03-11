@@ -23,12 +23,12 @@
 #define PL_KERNEL 0
 #define PL_USER 3
 
-struct __attribute((packed)) dtr {
+struct [[gnu::packed]] dtr {
     uint16_t limit;
     uint64_t addr;
 };
 
-struct __attribute((packed, aligned(4))) gdt_segment_descriptor {
+struct [[gnu::packed, gnu::aligned(4)]] gdt_segment_descriptor {
     uint64_t limit_low  :16;
     uint64_t base_low   :24;
     uint64_t a          : 1;
@@ -46,7 +46,7 @@ struct __attribute((packed, aligned(4))) gdt_segment_descriptor {
     uint64_t base_high  : 8;
 };
 
-struct __attribute((packed, aligned(4))) gdt_system_descriptor_low {
+struct [[gnu::packed, gnu::aligned(4)]] gdt_system_descriptor_low {
     uint64_t limit_low  :16;
     uint64_t base_low   :24;
     uint64_t type       : 4;
@@ -60,7 +60,7 @@ struct __attribute((packed, aligned(4))) gdt_system_descriptor_low {
     uint64_t base_high  : 8;
 };
 
-struct __attribute((packed, aligned(4))) gdt_system_descriptor_high {
+struct [[gnu::packed, gnu::aligned(4)]] gdt_system_descriptor_high {
     uint64_t base_veryhigh : 32;
     uint64_t reserved      : 32;
 };
@@ -71,7 +71,7 @@ union gdt_entry {
     struct gdt_system_descriptor_high system_descriptor_high;
 };
 
-struct __attribute((packed, aligned(4))) idt_entry {
+struct [[gnu::packed, gnu::aligned(4)]] idt_entry {
     uint64_t offset_low       :16;
     uint64_t segment_selector :16;
     uint64_t ist              : 3;
@@ -84,7 +84,7 @@ struct __attribute((packed, aligned(4))) idt_entry {
     uint64_t reserved2        :32;
 };
 
-struct __attribute((packed, aligned(4))) tss {
+struct [[gnu::packed, gnu::aligned(4)]] tss {
     uint32_t reserved0;
     uint64_t rsp0;
     uint64_t rsp1;
@@ -102,7 +102,7 @@ struct __attribute((packed, aligned(4))) tss {
     uint16_t iomap_base;
 };
 
-struct __attribute((packed, aligned(8))) page_directory_entry_subdirectory {
+struct [[gnu::packed, gnu::aligned(8)]] page_directory_entry_subdirectory {
     uint64_t p        : 1;
     uint64_t rw       : 1;
     uint64_t us       : 1;
@@ -117,7 +117,7 @@ struct __attribute((packed, aligned(8))) page_directory_entry_subdirectory {
     uint64_t xd       : 1;
 };
 
-struct __attribute((packed, aligned(8))) page_directory_entry_largepage {
+struct [[gnu::packed, gnu::aligned(8)]] page_directory_entry_largepage {
     uint64_t p        : 1;
     uint64_t rw       : 1;
     uint64_t us       : 1;
@@ -135,7 +135,7 @@ struct __attribute((packed, aligned(8))) page_directory_entry_largepage {
     uint64_t xd       : 1;
 };
 
-struct __attribute((packed, aligned(8))) page_table_entry {
+struct [[gnu::packed, gnu::aligned(8)]] page_table_entry {
     uint64_t p        : 1;
     uint64_t rw       : 1;
     uint64_t us       : 1;

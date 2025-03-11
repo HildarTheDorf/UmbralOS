@@ -76,7 +76,7 @@ void halt(void) {
     }
 }
 
-__attribute((format(printf, 1, 2)))
+[[gnu::format(printf, 1, 2)]]
 void kprint(const char *format, ...) {
     va_list va;
     va_start(va);
@@ -84,7 +84,7 @@ void kprint(const char *format, ...) {
     va_end(va);
 }
 
-__attribute((format(printf, 1, 0)))
+[[gnu::format(printf, 1, 0)]]
 void kprintv(const char *format, va_list va) {
     for (const char *p = format; *p; ++p) {
         if (*p == '%') {
@@ -106,8 +106,7 @@ void memzero(void *s, size_t n) {
     memset(s, 0, n);
 }
 
-[[noreturn]]
-__attribute((format(printf, 1, 2)))
+[[noreturn, gnu::format(printf, 1, 2)]]
 void panic(const char *format, ...) {
     kprint("PANIC: ");
 

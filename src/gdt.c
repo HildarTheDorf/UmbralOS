@@ -6,7 +6,7 @@ static struct tss TSS = {
     .iomap_base = sizeof(TSS)
 };
 
-__attribute((aligned(16)))
+[[gnu::aligned(16)]]
 static union gdt_entry GDT[GDT_IDX_MAX] = { 
     [GDT_IDX_NULL] = {},
     [GDT_IDX_CODE64] = {
