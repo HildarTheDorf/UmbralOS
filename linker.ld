@@ -6,11 +6,11 @@ PHDRS
     rodata PT_LOAD FILEHDR PHDRS;
     limine_requests PT_LOAD;
     text PT_LOAD;
-    datarelro PT_LOAD;
+    relrodata PT_LOAD;
     data PT_LOAD;
     dynamic PT_DYNAMIC;
-    relro PT_GNU_RELRO FLAGS(4);
-    stack PT_GNU_STACK FLAGS(6);
+    gnu_relro PT_GNU_RELRO FLAGS(4);
+    gnu_stack PT_GNU_STACK FLAGS(6);
 }
 
 SECTIONS
@@ -39,11 +39,11 @@ SECTIONS
 
     .data.rel.ro : {
         *(.data.rel.ro)
-    } :datarelro :relro
+    } :relrodata :gnu_relro
 
     .dynamic : {
         *(.dynamic)
-    } :datarelro :dynamic :relro
+    } :relrodata :gnu_relro :dynamic
 
     . = DATA_SEGMENT_RELRO_END(0, .);
 
