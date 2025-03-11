@@ -3,19 +3,23 @@ ENTRY(_start)
 PHDRS
 {
     headers PT_PHDR PHDRS;
-    load_headers PT_LOAD;
+    rodata PT_LOAD FILEHDR PHDRS;
     limine_requests PT_LOAD;
     text PT_LOAD;
-    rodata PT_LOAD;
+    datarelro PT_LOAD;
     data PT_LOAD;
     dynamic PT_DYNAMIC;
-    relro PT_GNU_RELRO;
+    relro PT_GNU_RELRO FLAGS(4);
     stack PT_GNU_STACK FLAGS(6);
 }
 
 SECTIONS
 {
     . = SIZEOF_HEADERS;
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    } :rodata
 
     . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
 
@@ -31,17 +35,15 @@ SECTIONS
         *(.text .text.*)
     } :text
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
-
-    .rodata : {
-        *(.rodata .rodata.*)
-    } :rodata
-
     . = DATA_SEGMENT_ALIGN(CONSTANT(MAXPAGESIZE), CONSTANT(COMMONPAGESIZE));
+
+    .data.rel.ro : {
+        *(.data.rel.ro)
+    } :datarelro :relro
 
     .dynamic : {
         *(.dynamic)
-    } :data :dynamic
+    } :datarelro :dynamic :relro
 
     . = DATA_SEGMENT_RELRO_END(0, .);
 

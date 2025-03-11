@@ -1,6 +1,6 @@
-CC := gcc
+CC := clang
 CFLAGS := $(shell cat compile_flags.txt)
-LD := ld
+LD := ld.lld
 LDFLAGS := --nostdlib -pie -z noexecstack --no-dynamic-linker
 M4 := m4
 QEMU := qemu-system-x86_64
