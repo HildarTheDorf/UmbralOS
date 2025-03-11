@@ -28,10 +28,10 @@ run: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu qemu64,x2apic,smap,smep,umip -cdrom $<
 
 run-kvm: umbralos.iso
-	$(QEMU) $(QEMU_FLAGS) --enable-kvm -cdrom $<
+	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -cdrom $<
 
 run-uefi: umbralos.iso
-	$(QEMU) $(QEMU_FLAGS) --enable-kvm -bios /usr/share/ovmf/OVMF.fd -cdrom $<
+	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -bios /usr/share/ovmf/OVMF.fd -cdrom $<
 
 build/%.s.o: src/%.s
 	$(CC) $(ASMFLAGS) -c $^ -o $@ 
