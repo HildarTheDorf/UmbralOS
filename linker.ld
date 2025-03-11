@@ -15,7 +15,7 @@ SECTIONS
 {
     . = SIZEOF_HEADERS;
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
 
     .limine_requests : {
         KEEP(*(.limine_requests.start))
@@ -23,19 +23,19 @@ SECTIONS
         KEEP(*(.limine_requests.end))
     } :limine_requests
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
 
     .text : {
         *(.text .text.*)
     } :text
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
 
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(CONSTANT(MAXPAGESIZE)) + (. & (CONSTANT(MAXPAGESIZE) - 1));
 
     .data : {
         *(.data .data.*)
