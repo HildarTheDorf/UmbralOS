@@ -12,7 +12,8 @@ void kprint(const char *format, ...);
 __attribute((format(printf, 1, 0)))
 void kprintv(const char *format, va_list va);
 
-void memzero(void *p, size_t size);
+void memset(void *s, int c, size_t n);
+void memzero(void *s, size_t n);
 
 [[noreturn]]
 __attribute((format(printf, 1, 2)))

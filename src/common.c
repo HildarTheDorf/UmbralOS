@@ -96,10 +96,14 @@ void kprintv(const char *format, va_list va) {
     }
 }
 
-void memzero(void *p, size_t size) {
-    for (size_t i = 0; i < size; ++i) {
-        *(char *)p = 0;
+void memset(void *s, int c, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        ((char *)s)[i] = c;
     }
+}
+
+void memzero(void *s, size_t n) {
+    memset(s, 0, n);
 }
 
 [[noreturn]]

@@ -42,21 +42,21 @@ static enum memory_flags elf_to_memory_flags(Elf64_Word elf_flags) {
     return flags;
 }
 
-static void addr_to_bitmap_location(phy_t page, size_t *bitmap_index, uint8_t *bitmap_mask) {
+static void pmm_addr_to_bitmap_location(phy_t page, size_t *bitmap_index, uint8_t *bitmap_mask) {
     if (page % PAGE_SIZE) panic("addr_to_bitmap_location: addr 0x%lx not aligned\n", page);
     const size_t page_idx = page / PAGE_SIZE;
 
-    if (page > PMM_DATA.num_pages) panic("page_to_bitmap_location: page out of range\n");
+    if (page_idx >= PMM_DATA.num_pages) panic("page_to_bitmap_location: page 0x%lx out of range\n", page);
 
     const uint8_t bit_index = page_idx % CHAR_BIT;
-    *bitmap_index = page / CHAR_BIT;
+    *bitmap_index = page_idx / CHAR_BIT;
     *bitmap_mask = 1 << bit_index;
 }
 
 static void pmm_mark_page(phy_t page, bool usable) {
     size_t bitmap_index;
     uint8_t bitmap_mask;
-    addr_to_bitmap_location(page, &bitmap_index, &bitmap_mask);
+    pmm_addr_to_bitmap_location(page, &bitmap_index, &bitmap_mask);
     if (usable) {
         PMM_DATA.bitmap[bitmap_index] |= bitmap_mask;
     } else {
@@ -64,12 +64,10 @@ static void pmm_mark_page(phy_t page, bool usable) {
     }
 }
 
-
 static bool pmm_query_page(phy_t page) {
     size_t bitmap_index;
     uint8_t bitmap_mask;
-    addr_to_bitmap_location(page, &bitmap_index, &bitmap_mask);
-
+    pmm_addr_to_bitmap_location(page, &bitmap_index, &bitmap_mask);
     return !!(PMM_DATA.bitmap[bitmap_index] & bitmap_mask);
 }
 
@@ -131,12 +129,15 @@ void pmm_init(const struct limine_memmap_response *limine_memmap_response, void 
     }
 
     PMM_DATA.bitmap = phy_to_virt(bitmap_phy);
+    memzero(PMM_DATA.bitmap, bitmap_size);
+
     for (uint64_t i = 0; i < limine_memmap_response->entry_count; ++i) {
         const struct limine_memmap_entry *limine_memmap_entry = limine_memmap_response->entries[i];
         if (limine_memmap_entry->type == LIMINE_MEMMAP_USABLE) {
             pmm_mark_range(limine_memmap_entry->base, limine_memmap_entry->length, true);
         }
     }
+
     pmm_mark_range(bitmap_phy, round_up(bitmap_size, PAGE_SIZE), false);
 }
 
@@ -148,7 +149,17 @@ void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, vo
         }
     }
 
-    pmm_mark_range((uintptr_t)stack_origin - (uintptr_t)pHHDM, stack_size, false);
+    const uintptr_t stack_top = (uintptr_t)stack_origin;
+    const uintptr_t stack_bottom = stack_top - stack_size;
+    pmm_mark_range(stack_bottom - (uintptr_t)pHHDM, stack_size, false);
+}
+
+void pmm_zero(void) {
+    for (size_t i = 0; i < PMM_DATA.num_pages; ++i) {
+        if (pmm_query_page(i * PAGE_SIZE)) {
+            memzero(phy_to_virt(i * PAGE_SIZE), PAGE_SIZE);
+        }
+    }
 }
 
 static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry) {

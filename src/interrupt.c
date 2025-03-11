@@ -317,6 +317,11 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     kprint("rflags: 0x%lx\n", stack_frame->rflags);
     kprint("rsp: 0x%lx\n", stack_frame->rsp);
     kprint("ss: 0x%lx\n", stack_frame->ss);
+    if (vector == 0xE) {
+        uint64_t cr2;
+        __asm volatile("mov %%cr2,%0" : "=r"(cr2));
+        kprint("cr2: 0x%lx\n", cr2);
+    }
 
     switch (vector) {
     default:
