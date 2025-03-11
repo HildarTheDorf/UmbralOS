@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := $(shell cat compile_flags.txt)
 LD := ld
-LDFLAGS := --nostdlib -pie -z noexecstack
+LDFLAGS := --nostdlib -pie -z noexecstack --no-dynamic-linker
 M4 := m4
 QEMU := qemu-system-x86_64
 QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
