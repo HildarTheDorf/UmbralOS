@@ -1,4 +1,3 @@
-/* We want the symbol kmain to be our entry point */
 ENTRY(_start)
 
 PHDRS
