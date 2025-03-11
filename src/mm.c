@@ -140,6 +140,17 @@ void pmm_init(const struct limine_memmap_response *limine_memmap_response, void 
     pmm_mark_range(bitmap_phy, round_up(bitmap_size, PAGE_SIZE), false);
 }
 
+void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, void *stack_origin, size_t stack_size) {
+    for (uint64_t i = 0; i < limine_memmap_response->entry_count; ++i) {
+        const struct limine_memmap_entry *limine_memmap_entry = limine_memmap_response->entries[i];
+        if (limine_memmap_entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE) {
+            pmm_mark_range(limine_memmap_entry->base, limine_memmap_entry->length, true);
+        }
+    }
+
+    pmm_mark_range((uintptr_t)stack_origin - (uintptr_t)pHHDM, stack_size, false);
+}
+
 static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry) {
     if (!entry->p) {
         const phy_t page = pmm_alloc_page();

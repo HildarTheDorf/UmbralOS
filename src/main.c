@@ -5,6 +5,8 @@
 #include "security.h"
 #include "serial.h"
 
+#define DEFAULT_STACK_SIZE 0x10000
+
 LIMINE_REQUESTS_START_MARKER
 LIMINE_BASE_REVISION(3)
 
@@ -33,6 +35,7 @@ void main(void *stack_origin) {
 
     pmm_init(limine_memmap_request.response, (void *)limine_hhdm_request.response->offset);
     vmm_init(limine_memmap_request.response, limine_kernel_address_request.response);
+    pmm_reclaim(limine_memmap_request.response, stack_origin, DEFAULT_STACK_SIZE);
 
     kprint("Boot Complete!\n");
     halt();
