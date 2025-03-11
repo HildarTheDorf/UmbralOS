@@ -8,5 +8,6 @@
 -mno-mmx
 -mno-80387
 -mno-red-zone
+-fpic
 -O2
 -g
