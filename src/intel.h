@@ -18,7 +18,33 @@
 #define GDT_IDX_TSS 3
 #define GDT_IDX_MAX 5
 
-#define IDT_IDX_MAX 256
+#define IDT_IDX_DE 0x00
+#define IDT_IDX_DB 0x01
+#define IDT_IDX_NMI 0x02
+#define IDT_IDX_BP 0x03
+#define IDT_IDX_OF 0x04
+#define IDT_IDX_BR 0x05
+#define IDT_IDX_UD 0x06
+#define IDT_IDX_NM 0x07
+#define IDT_IDX_DF 0x08
+#define IDT_IDX_CSO 0x09
+#define IDT_IDX_TS 0x0A
+#define IDT_IDX_NP 0x0B
+#define IDT_IDX_SS 0x0C
+#define IDT_IDX_GP 0x0D
+#define IDT_IDX_PF 0x0E
+#define IDT_IDX_MF 0x10
+#define IDT_IDX_AC 0x11
+#define IDT_IDX_MC 0x12
+#define IDT_IDX_XM 0x13
+#define IDT_IDX_XF 0x13
+#define IDT_IDX_VE 0x14
+#define IDT_IDX_CP 0x15
+#define IDT_IDX_HV 0x1C
+#define IDT_IDX_VC 0x1D
+#define IDT_IDX_SX 0x1E
+#define IDT_IDX_MAX_RESERVED 0x1F
+#define IDT_IDX_MAX 0xFF
 
 #define PL_KERNEL 0
 #define PL_USER 3

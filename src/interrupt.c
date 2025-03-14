@@ -292,15 +292,13 @@ FOR_EACH_INTERRUPT
 },
 
 [[gnu::aligned(16)]]
-static struct idt_entry IDT[IDT_IDX_MAX] = {
+static struct idt_entry IDT[IDT_IDX_MAX + 1] = {
     FOR_EACH_INTERRUPT
 };
 
 #undef I
 
-void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
-    enforce_smap();
-
+static void dump_interrupt_frame(const struct stack_frame *stack_frame) {
     kprint("r11: 0x%lx\n", stack_frame->r11);
     kprint("r10: 0x%lx\n", stack_frame->r10);
     kprint("r9: 0x%lx\n", stack_frame->r9);
@@ -317,15 +315,22 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     kprint("rflags: 0x%lx\n", stack_frame->rflags);
     kprint("rsp: 0x%lx\n", stack_frame->rsp);
     kprint("ss: 0x%lx\n", stack_frame->ss);
-    if (vector == 0xE) {
-        uint64_t cr2;
-        __asm volatile("mov %%cr2,%0" : "=r"(cr2));
-        kprint("cr2: 0x%lx\n", cr2);
-    }
+}
+
+void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
+    enforce_smap();
+    dump_interrupt_frame(stack_frame);
 
     switch (vector) {
+    case IDT_IDX_PF:
+        uint64_t cr2;
+        __asm volatile("mov %%cr2,%0" : "=r"(cr2));
+        panic("Unhandled #PF(%lx)\n", cr2);
     default:
-        panic("Unhandled Interrupt 0x%x\n", vector);
+        if (vector <= IDT_IDX_MAX_RESERVED) {
+            panic("Unhandled Exception 0x%x\n", vector);
+        }
+        kprint("Unhandled Interrupt 0x%x\n", vector);
     }
 }
 
