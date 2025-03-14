@@ -8,5 +8,6 @@
 -mno-mmx
 -mno-80387
 -mno-red-zone
+-DDEBUG_CHECKS
 -O2
 -g

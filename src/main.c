@@ -41,7 +41,10 @@ void main(void *stack_origin) {
     pmm_init(limine_memmap_request.response, (void *)limine_hhdm_request.response->offset);
     vmm_init(limine_memmap_request.response, limine_kernel_address_request.response);
     pmm_reclaim(limine_memmap_request.response, stack_origin, DEFAULT_STACK_SIZE);
-    pmm_zero(); // TODO: Disable this in release builds
+
+#ifdef DEBUG_CHECKS
+    pmm_zero();
+#endif
 
     kprint("Boot Complete!\n");
     halt();

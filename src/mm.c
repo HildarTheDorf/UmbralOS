@@ -154,6 +154,7 @@ void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, vo
     pmm_mark_range(stack_bottom - (uintptr_t)pHHDM, stack_size, false);
 }
 
+#ifdef DEBUG_CHECKS
 void pmm_zero(void) {
     for (size_t i = 0; i < PMM_DATA.num_pages; ++i) {
         if (pmm_query_page(i * PAGE_SIZE)) {
@@ -161,6 +162,7 @@ void pmm_zero(void) {
         }
     }
 }
+#endif
 
 static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry) {
     if (!entry->p) {

@@ -13,5 +13,7 @@ phy_t pmm_alloc_page(void);
 void pmm_free_page(phy_t);
 void pmm_init(const struct limine_memmap_response *limine_memmap_response, void *phhdm);
 void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, void *stack_origin, size_t stack_size);
+#ifdef DEBUG_CHECKS
 void pmm_zero(void);
+#endif
 void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response);
