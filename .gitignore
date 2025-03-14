@@ -1,4 +1,4 @@
 build/*
 iso_root/*
-qemu.log
+*.log
 umbralos.iso

@@ -1,0 +1,6 @@
+boot: cdrom
+ata0-master: type=cdrom, path="umbralos.iso", status=inserted
+megs: 128
+romimage: file=/home/karenw/Downloads/BIOS-bochs-latest, options=fastboot
+log: bochs.log
+com1: enabled=1, mode=file, dev=umbralos.log

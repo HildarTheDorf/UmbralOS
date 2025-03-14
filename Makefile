@@ -7,7 +7,7 @@ QEMU := qemu-system-x86_64
 QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
 
 ASM_SOURCES := gdt.s interrupt.s main.s
-C_SOURCES := common.c gdt.c interrupt.c main.c mm.c security.c serial.c
+C_SOURCES := acpi.c common.c gdt.c interrupt.c main.c mm.c security.c serial.c
 ASM_OBJECTS := $(patsubst %.s,build/%.s.o,$(ASM_SOURCES))
 C_OBJECTS := $(patsubst %.c,build/%.c.o,$(C_SOURCES))
 
@@ -16,7 +16,7 @@ ESP_DIRECTORY := iso_root/EFI/boot
 LIMINE_DIRECTORY := iso_root/boot/limine
 LIMINE_FILES := $(LIMINE_DIRECTORY)/limine-bios-cd.bin $(LIMINE_DIRECTORY)/limine-bios.sys $(LIMINE_DIRECTORY)/limine-uefi-cd.bin $(ESP_DIRECTORY)/BOOTIA32.EFI $(ESP_DIRECTORY)/BOOTX64.EFI
 
-.PHONY: all clean run
+.PHONY: all clean run run-bochs run-kvm run-uefi
 
 all: umbralos.iso
 
@@ -28,6 +28,9 @@ clean:
 
 run: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu qemu64,x2apic,smap,smep,umip -cdrom $<
+
+run-bochs: umbralos.iso
+	bochs
 
 run-kvm: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -cdrom $<
