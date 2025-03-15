@@ -31,7 +31,8 @@
 #define LAPIC_REGISTER_SIZE 0x10
 #define LAPIC_REGISTER_MAX 0x40
 
-#define LAPIC_REGISTER_IDX_SPIV 0xF
+#define LAPIC_REGISTER_IDX_EOI 0x0B
+#define LAPIC_REGISTER_IDX_SPIV 0x0F
 #define LAPIC_REGISTER_IDX_LVT_CMCI 0x2F
 #define LAPIC_REGISTER_IDX_LVT_TIMER 0x32
 #define LAPIC_REGISTER_IDX_LVT_THERM 0x33
@@ -406,6 +407,10 @@ static void lapic_write(uint8_t reg, uint32_t value) {
     }
 }
 
+static void lapic_eoi(void) {
+    lapic_write(LAPIC_REGISTER_IDX_EOI, 0);
+}
+
 static void lapic_init(void) {
     const struct cpuid_result cpuid_result = cpuid(1, 0);
     HAS_X2APIC = !!(cpuid_result.ecx & CPUID_1_ECX_X2APIC);
@@ -468,15 +473,20 @@ static void ioapic_init(void) {
 
     const uint32_t ioapicver = ioapic_read32(0x01);
     for (uint8_t i = 0; i <= (ioapicver >> 16); ++i) {
+        uint8_t reg = 0x10 + i * 2;
+        uint8_t vector = 0x30 + i;
         switch (i) {
+        case 0x2:
+            ioapic_write64(reg, (1 << 16) | vector);
+            break;
         case 0x5:
         case 0x9:
         case 0xA:
         case 0xB:
-            ioapic_write64(0x10 + i * 2, (1 << 15) | 0x30);
+            ioapic_write64(reg, (1 << 15) | vector);
             break;
         default:
-            ioapic_write64(0x10 + i * 2, 0x30);
+            ioapic_write64(reg, vector);
             break;
         }
     }
@@ -630,6 +640,33 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 6:
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
+        break;
+    case IDT_IDX_IOAPIC_BASE +  0:
+    case IDT_IDX_IOAPIC_BASE +  1:
+    case IDT_IDX_IOAPIC_BASE +  2:
+    case IDT_IDX_IOAPIC_BASE +  3:
+    case IDT_IDX_IOAPIC_BASE +  4:
+    case IDT_IDX_IOAPIC_BASE +  5:
+    case IDT_IDX_IOAPIC_BASE +  6:
+    case IDT_IDX_IOAPIC_BASE +  7:
+    case IDT_IDX_IOAPIC_BASE +  8:
+    case IDT_IDX_IOAPIC_BASE +  9:
+    case IDT_IDX_IOAPIC_BASE + 10:
+    case IDT_IDX_IOAPIC_BASE + 11:
+    case IDT_IDX_IOAPIC_BASE + 12:
+    case IDT_IDX_IOAPIC_BASE + 13:
+    case IDT_IDX_IOAPIC_BASE + 14:
+    case IDT_IDX_IOAPIC_BASE + 15:
+    case IDT_IDX_IOAPIC_BASE + 16:
+    case IDT_IDX_IOAPIC_BASE + 17:
+    case IDT_IDX_IOAPIC_BASE + 18:
+    case IDT_IDX_IOAPIC_BASE + 19:
+    case IDT_IDX_IOAPIC_BASE + 20:
+    case IDT_IDX_IOAPIC_BASE + 21:
+    case IDT_IDX_IOAPIC_BASE + 22:
+    case IDT_IDX_IOAPIC_BASE + 23:
+        kprint("Ignoring Interrupt 0x%x from I/O APIC\n", vector);
+        lapic_eoi();
         break;
     case IDT_IDX_LAPIC_SPURIOUS:
         kprint("Spurious Interrupt (LAPIC)");

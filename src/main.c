@@ -55,7 +55,6 @@ void main(void *stack_origin) {
     pmm_zero();
 #endif
 
-    __asm("int $3");
     kprint("Boot Complete!\n");
     halt();
 }
