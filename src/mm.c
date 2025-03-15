@@ -186,6 +186,11 @@ static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
     if ((uintptr_t)where % PAGE_SIZE) panic("vmm_map_page: where not aligned\n");
     if (flags & M_W && flags & M_X) panic("vmm_map_page: W|X memory is forbidden");
 
+    const bool is_w = !!(flags & M_W);
+    const bool is_x = !!(flags & M_X);
+    const bool is_u = !!(flags & M_U);
+    const bool is_uc = !!(flags & M_UC);
+
     const uint16_t pml4_index = (((uintptr_t)where) >> 39) & 0x1FF;
     struct page_directory_entry_subdirectory *pdpt = vmm_ensure_present(&PML4[pml4_index]);
 
@@ -196,26 +201,40 @@ static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
     struct page_table_entry *pt = vmm_ensure_present(&pd[pd_index]);
 
     const uint16_t pt_index = (((uintptr_t)where) >> 12) & 0x1FF;
-    pt[pt_index].xd = !(flags & M_X);
+
+    // pat/pcd/pwt 0b000 is WB, for normal memory
+    // pat/pcd/pwt 0b111 is UC-, for MMIO
+    pt[pt_index].xd = !is_x;
     pt[pt_index].pk = 0x0;
     pt[pt_index].addr = what >> 12;
     pt[pt_index].g = 0;
-    pt[pt_index].pat = 0;
+    pt[pt_index].pat = is_uc;
     pt[pt_index].a = 0;
     pt[pt_index].d = 0;
-    pt[pt_index].pcd = 0;
-    pt[pt_index].pwt = 0;
-    pt[pt_index].us = !!(flags & M_U);
-    pt[pt_index].rw = !!(flags & M_W);
+    pt[pt_index].pcd = is_uc;
+    pt[pt_index].pwt = is_uc;
+    pt[pt_index].us = is_u;
+    pt[pt_index].rw = is_w;
     pt[pt_index].p = 1;
 }
 
 
 void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags) {
+    if (what % PAGE_SIZE) panic("vmm_map: what not aligned\n");
+    if ((uintptr_t)where % PAGE_SIZE) panic("vmm_map: where not aligned\n");
+    if (size % PAGE_SIZE) panic("vmm_map: size not aligned\n");
+
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         vmm_map_page(what + i, (void *)((uintptr_t)where + i), flags);
     }
-}   
+}
+
+void vmm_map_unaligned(phy_t what, void *where, size_t size, enum memory_flags flags) {
+    const phy_t aligned_what = round_down(what, PAGE_SIZE);
+    void *aligned_where = (void *)round_down((uintptr_t)where, PAGE_SIZE);
+    const size_t aligned_end = round_up(what + size, PAGE_SIZE);
+    vmm_map(aligned_what, aligned_where, aligned_end - aligned_what, flags);
+}
 
 void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {            
     PML4 = phy_to_virt(pmm_alloc_page());
@@ -226,12 +245,12 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
      
         switch (limine_memmap_entry->type) {
         case LIMINE_MEMMAP_USABLE:
-        case LIMINE_MEMMAP_RESERVED:
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-            const phy_t what = round_down(limine_memmap_entry->base, PAGE_SIZE);
-            const size_t size = round_up(limine_memmap_entry->base + limine_memmap_entry->length, PAGE_SIZE) - limine_memmap_entry->base;
-            vmm_map(what, phy_to_virt(what), size, M_W);
+            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
+            break;
+        case LIMINE_MEMMAP_RESERVED:
+            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_UC | M_W);
             break;
         case LIMINE_MEMMAP_ACPI_NVS:
         case LIMINE_MEMMAP_BAD_MEMORY:

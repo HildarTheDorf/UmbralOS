@@ -470,7 +470,7 @@ static void lapic_init(void) {
     } else {
         const phy_t lapic_base_phy = lapic_base & MSR_IA32_APIC_BASE_MASK;
         void *lapic_base_virt = phy_to_virt(lapic_base_phy);
-        vmm_map(lapic_base_phy, lapic_base_virt, LAPIC_REGISTER_MAX * LAPIC_REGISTER_SIZE, M_W);
+        vmm_map_unaligned(lapic_base_phy, lapic_base_virt, LAPIC_REGISTER_MAX * LAPIC_REGISTER_SIZE, M_W);
         LAPIC_BASE = lapic_base_virt;
     }
 
@@ -532,7 +532,7 @@ static void ioapic_init() {
         ioapic_write64(IOAPICREDTBL(i), IOAPICREDTBL_MASK);
     }
 
-        ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
+    ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
 }
 
 static void parse_madt(void) {
@@ -555,7 +555,7 @@ static void parse_madt(void) {
             if (madt_ioapic->global_system_interrupt_base != 0) panic("Remapping the entire I/O APIC is not supported");
 
             IOAPIC_BASE = phy_to_virt(madt_ioapic->address);
-            vmm_map(madt_ioapic->address, IOAPIC_BASE, 0x20, M_W);
+            vmm_map_unaligned(madt_ioapic->address, IOAPIC_BASE, 0x20, M_UC | M_W);
             break;
         }
         case 2: {
