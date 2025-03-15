@@ -184,6 +184,7 @@ static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry)
 static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
     if (what % PAGE_SIZE) panic("vmm_map_page: what not aligned\n");
     if ((uintptr_t)where % PAGE_SIZE) panic("vmm_map_page: where not aligned\n");
+    if (!where) panic("vmm_map_page: Mapping a page at NULL is forbidden");
     if (flags & M_W && flags & M_X) panic("vmm_map_page: W|X memory is forbidden");
 
     const bool is_w = !!(flags & M_W);
