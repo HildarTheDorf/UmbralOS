@@ -374,7 +374,7 @@ static void legacy_pic_init_and_disable(uint8_t master_offset, uint8_t slave_off
 
 static uint64_t rdmsr(uint32_t msr) {
     uint32_t valhigh, vallow;
-    __asm("rdmsr" : "=d"(valhigh), "=a"(vallow) : "c"(msr));
+    __asm volatile("rdmsr" : "=d"(valhigh), "=a"(vallow) : "c"(msr));
     return ((uint64_t)valhigh << 32) | ((uint64_t)vallow);
 }
 

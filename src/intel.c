@@ -2,7 +2,7 @@
 
 struct cpuid_result cpuid(uint32_t eax, uint32_t ecx) {
     struct cpuid_result ret;
-    __asm("cpuid"
+    __asm volatile("cpuid"
         : "=a"(ret.eax), "=b"(ret.ebx), "=c"(ret.ecx), "=d"(ret.edx)
         : "a"(eax), "c"(ecx));
     return ret;
