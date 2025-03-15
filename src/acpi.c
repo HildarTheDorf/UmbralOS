@@ -22,18 +22,6 @@ struct [[gnu::packed]] XSDP {
     uint8_t reserved[3];
 };
 
-struct [[gnu::packed]] SDTHeader {
-    char signature[4];
-    uint32_t length;
-    uint8_t revision;
-    uint8_t checksum;
-    char oem_id[6];
-    char oem_table_id[8];
-    uint32_t oem_revision;
-    uint32_t creator_id;
-    uint32_t creator_revision;
-};
-
 struct [[gnu::packed]] RSDT {
     struct SDTHeader h;
     phy32_t sdt32[];
@@ -44,47 +32,7 @@ struct [[gnu::packed]] XSDT {
     phy_t sdt64[];
 };
 
-struct [[gnu::packed]] MADT {
-    struct SDTHeader h;
-    phy32_t lapic_addr;
-    uint32_t flags;
-    char records[];
-};
-
-struct [[gnu::packed]] MADTEntryHeader {
-    uint8_t type;
-    uint8_t length;
-};
-
-struct [[gnu::packed]] MADTProcessorLocalAPIC {
-    struct MADTEntryHeader h;
-    uint8_t processor_id;
-    uint8_t apic_id;
-    uint32_t flags;
-};
-
-struct [[gnu::packed]] MADTIOAPIC {
-    struct MADTEntryHeader h;
-    uint8_t apic_id;
-    uint8_t reserved;
-    uint32_t address;
-    uint32_t global_system_interrupt_base;
-};
-
-struct [[gnu::packed]] MADTInterruptSourceOverride {
-    struct MADTEntryHeader h;
-    uint8_t bus_source;
-    uint8_t irq_source;
-    uint32_t global_system_interrupt;
-    uint16_t flags;
-};
-
-struct [[gnu::packed]] MADTLocalAPICNMI {
-    struct MADTEntryHeader h;
-    uint8_t processor_id;
-    uint16_t flags;
-    uint8_t lint;
-};
+const struct MADT *ACPI_MADT;
 
 static void validate_sdt(const struct SDTHeader *pSDT) {
     uint8_t checksum = 0;
@@ -110,36 +58,10 @@ static void validate_xsdp(const struct XSDP *pXSDP) {
     if (checksum) panic("Invalid XSDP. Expected 0, got %u\n", checksum);
 }
 
-static void parse_madt(const struct MADT *pMADT) {
-    for (uint32_t i = 0; i + offsetof(struct MADT, records) < pMADT->h.length; i += ((const struct MADTEntryHeader *)&pMADT->records[i])->length) {
-        const struct MADTEntryHeader *pHeader = (const void *)&pMADT->records[i];
-        switch (pHeader->type) {
-        case 0: // Processor Local APIC
-            const struct MADTProcessorLocalAPIC *pProcessorLocalAPIC = (const void *)pHeader;
-            kprint("Local APIC for processor %u: %u(0x%x)\n", pProcessorLocalAPIC->processor_id, pProcessorLocalAPIC->apic_id, pProcessorLocalAPIC->flags);
-            break;
-        case 1: // I/O APIC
-            const struct MADTIOAPIC *pIOAPIC = (const void *)pHeader;
-            kprint("I/O APIC #%u@0x%x(0x%x)\n", pIOAPIC->apic_id, pIOAPIC->address, pIOAPIC->global_system_interrupt_base);
-            break;
-        case 2: // Interrupt Source Override
-            const struct MADTInterruptSourceOverride *pInterruptSourceOverride = (const void *)pHeader;
-            kprint("Interrupt Source Override BUS %u IRQ 0x%x: 0x%x(0x%x)\n", pInterruptSourceOverride->bus_source, pInterruptSourceOverride->irq_source, pInterruptSourceOverride->global_system_interrupt, pInterruptSourceOverride->flags);
-            break;
-        case 4: // Local APIC NMI
-            const struct MADTLocalAPICNMI *pLocalAPICNMI = (const void *)pHeader;
-            kprint("Non-Maskable local interrupt CPU #%u: LINT_#%u(0x%x)\n", pLocalAPICNMI->processor_id, pLocalAPICNMI->lint, pLocalAPICNMI->flags);
-            break;
-        default:
-            panic("Unknown MADT Entry 0x%x", pHeader->type);
-        }
-    }
-}
-
 static void parse_sdt(const struct SDTHeader *pSDT) {
     validate_sdt(pSDT);
     if (!strncmp(pSDT->signature, "APIC", 4)) {
-        parse_madt((const struct MADT *)pSDT);
+        ACPI_MADT = (const void *)pSDT;
     }
 }
 

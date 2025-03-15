@@ -1,3 +1,4 @@
+#include "acpi.h"
 #include "intel.h"
 #include "common.h"
 #include "mm.h"
@@ -50,6 +51,15 @@
 #define LAPIC_LVT_MASK (1 << 16)
 
 #define LAPIC_SPIV_ENABLE 0x100
+
+#define IOAPICVER 0x01
+#define IOAPICREDTBL(n) (0x10 + 2 * n)
+
+#define IOAPICVER_MAXENTRY_SHIFT 16
+
+#define IOAPICREDTBL_POLARITY (1 << 13)
+#define IOAPICREDTBL_TRIGGER (1 << 15)
+#define IOAPICREDTBL_MASK (1 << 16)
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -309,6 +319,12 @@
     I(254) \
     I(255)
 
+struct redirection_entry {
+    uint8_t destination;
+    bool is_level_triggered;
+    bool is_active_low;    
+};
+
 struct stack_frame {
     uint64_t r11;
     uint64_t r10;
@@ -332,6 +348,31 @@ static bool HAS_X2APIC;
 
 static void *LAPIC_BASE;
 static void *IOAPIC_BASE;
+
+static struct redirection_entry ISA_REDIRECTION_ENTRY[16] = {
+    [0] = {.destination = 0},
+    [1] = {.destination = 1},
+    [2] = {.destination = 2},
+    [3] = {.destination = 3},
+    [4] = {.destination = 4},
+    [5] = {.destination = 5},
+    [6] = {.destination = 6},
+    [7] = {.destination = 7},
+    [8] = {.destination = 8},
+    [9] = {.destination = 9},
+    [10] = {.destination = 10},
+    [11] = {.destination = 11},
+    [12] = {.destination = 12},
+    [13] = {.destination = 13},
+    [14] = {.destination = 14},
+    [15] = {.destination = 15},
+};
+
+static struct {
+    uint8_t lint;
+    bool is_level_triggered;
+    bool is_active_low;    
+} NMI_REDIRECTION;
 
 #define I(X) extern void interrupt_stub_##X(void);
 FOR_EACH_INTERRUPT
@@ -436,8 +477,13 @@ static void lapic_init(void) {
     lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_THERM, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_PERFC, LAPIC_LVT_MASK);
-    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_EXTINT);
-    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
+    if (NMI_REDIRECTION.lint == 0) {
+        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_NMI);
+        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_EXTINT);
+    } else {
+        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_EXTINT);
+        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
+    }
     lapic_write(LAPIC_REGISTER_IDX_LVT_ERROR, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
 }
@@ -464,36 +510,86 @@ static void ioapic_write64(uint8_t reg, uint64_t value) {
     ioapic_write32(reg + 1, value >> 32);
 }
 
-static void ioapic_init(void) {
-    // FIXME: All of this is hardcoded for qemu
-    const phy_t ioapic_phy = 0xFEC00000;
-    void *ioapic_virt = phy_to_virt(ioapic_phy);
-    vmm_map(ioapic_phy, ioapic_virt, 0x20, M_W);
-    IOAPIC_BASE = phy_to_virt(0xFEC00000);
+static void ioapic_enable_isa_interrupt(uint8_t vector) {
+    const uint8_t i = vector - IDT_IDX_ISA_BASE;
 
-    const uint32_t ioapicver = ioapic_read32(0x01);
-    for (uint8_t i = 0; i <= (ioapicver >> 16); ++i) {
-        uint8_t reg = 0x10 + i * 2;
-        uint8_t vector = 0x30 + i;
-        switch (i) {
-        case 0x2:
-            ioapic_write64(reg, (1 << 16) | vector);
+    uint32_t value = vector;
+    if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
+        value |= IOAPICREDTBL_POLARITY;
+    }
+    if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
+        value |= IOAPICREDTBL_TRIGGER;
+    }
+    ioapic_write64(IOAPICREDTBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+}
+
+static void ioapic_init() {
+    const uint32_t ioapicver = ioapic_read32(IOAPICVER);
+    const uint8_t num_ioapic_entries = (ioapicver >> IOAPICVER_MAXENTRY_SHIFT) & 0xFF;
+    if (num_ioapic_entries < 16) panic("I/O APIC has too few pins to cover all ISA IRQs");
+
+    for (uint8_t i = 0; i < num_ioapic_entries; ++i) {
+        ioapic_write64(IOAPICREDTBL(i), IOAPICREDTBL_MASK);
+    }
+
+    ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
+}
+
+static void parse_madt(void) {
+    const struct MADTEntryHeader *madt_entry;
+    for (uint32_t i = 0; madt_entry = (const void *)&ACPI_MADT->records[i], i + offsetof(struct MADT, records) < ACPI_MADT->h.length; i += ((const struct MADTEntryHeader *)&ACPI_MADT->records[i])->length) {
+        switch (madt_entry->type) {
+        case 0: {
+            const struct MADTProcessorLocalAPIC *madt_lapic = (const void *)madt_entry;
+            if (madt_lapic->processor_id != 0) panic("Multiple CPUs  not supported");
+
+            if (madt_lapic->flags & 0x1) {
+                legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);
+            }
             break;
-        case 0x5:
-        case 0x9:
-        case 0xA:
-        case 0xB:
-            ioapic_write64(reg, (1 << 15) | vector);
+        }
+        case 1: {
+            const struct MADTIOAPIC *madt_ioapic =  (const void *)madt_entry;
+            if (IOAPIC_BASE != 0) panic("Multiple I/O APICs not supported");
+            if (madt_ioapic->global_system_interrupt_base != 0) panic("Remapping the entire I/O APIC is not supported");
+
+            IOAPIC_BASE = phy_to_virt(madt_ioapic->address);
+            vmm_map(madt_ioapic->address, IOAPIC_BASE, PAGE_SIZE, M_W);
             break;
+        }
+        case 2: {
+            const struct MADTInterruptSourceOverride *madt_override = (const void *)madt_entry;
+            if (madt_override->bus_source != 0) panic("Unknown MADT Bus %u", madt_override->bus_source);
+
+            const uint8_t polarity = (madt_override->flags >> 0) & 0x3;
+            const uint8_t trigger = (madt_override->flags >> 2) & 0x3;
+
+            ISA_REDIRECTION_ENTRY[madt_override->irq_source].destination = madt_override->global_system_interrupt;
+            ISA_REDIRECTION_ENTRY[madt_override->global_system_interrupt].is_active_low = polarity == 0x3;
+            ISA_REDIRECTION_ENTRY[madt_override->global_system_interrupt].is_level_triggered = trigger == 0x3;
+            break;
+        }
+        case 4: {
+            const struct MADTLocalAPICNMI *madt_nmi = (const void *)madt_entry;
+            if (madt_nmi->processor_id != 0 && madt_nmi->processor_id != 0xFF) panic("Multiple CPUs not supported");
+
+            const uint8_t polarity = (madt_nmi->flags >> 0) & 0x3;
+            const uint8_t trigger = (madt_nmi->flags >> 2) & 0x3;
+
+            NMI_REDIRECTION.lint = madt_nmi->lint;
+            NMI_REDIRECTION.is_active_low = polarity == 0x3;
+            NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+            break;
+        }
         default:
-            ioapic_write64(reg, vector);
-            break;
+            panic("Unknown MADT struct %u", madt_entry->type);
         }
     }
 }
 
 void configure_interrupts(void) {
-    legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);    
+    parse_madt();
+
     lapic_init();
     ioapic_init();
 
@@ -641,31 +737,8 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
         break;
-    case IDT_IDX_IOAPIC_BASE +  0:
-    case IDT_IDX_IOAPIC_BASE +  1:
-    case IDT_IDX_IOAPIC_BASE +  2:
-    case IDT_IDX_IOAPIC_BASE +  3:
-    case IDT_IDX_IOAPIC_BASE +  4:
-    case IDT_IDX_IOAPIC_BASE +  5:
-    case IDT_IDX_IOAPIC_BASE +  6:
-    case IDT_IDX_IOAPIC_BASE +  7:
-    case IDT_IDX_IOAPIC_BASE +  8:
-    case IDT_IDX_IOAPIC_BASE +  9:
-    case IDT_IDX_IOAPIC_BASE + 10:
-    case IDT_IDX_IOAPIC_BASE + 11:
-    case IDT_IDX_IOAPIC_BASE + 12:
-    case IDT_IDX_IOAPIC_BASE + 13:
-    case IDT_IDX_IOAPIC_BASE + 14:
-    case IDT_IDX_IOAPIC_BASE + 15:
-    case IDT_IDX_IOAPIC_BASE + 16:
-    case IDT_IDX_IOAPIC_BASE + 17:
-    case IDT_IDX_IOAPIC_BASE + 18:
-    case IDT_IDX_IOAPIC_BASE + 19:
-    case IDT_IDX_IOAPIC_BASE + 20:
-    case IDT_IDX_IOAPIC_BASE + 21:
-    case IDT_IDX_IOAPIC_BASE + 22:
-    case IDT_IDX_IOAPIC_BASE + 23:
-        kprint("Ignoring Interrupt 0x%x from I/O APIC\n", vector);
+    case IDT_IDX_ISA_KB:
+        kprint("Ignoring Interrupt from KB\n");
         lapic_eoi();
         break;
     case IDT_IDX_LAPIC_SPURIOUS:
