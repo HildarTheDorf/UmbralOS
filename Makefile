@@ -7,7 +7,7 @@ QEMU := qemu-system-x86_64
 QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
 
 ASM_SOURCES := gdt.s interrupt.s main.s
-C_SOURCES := acpi.c common.c gdt.c interrupt.c main.c mm.c security.c serial.c
+C_SOURCES := acpi.c common.c gdt.c intel.c interrupt.c main.c mm.c security.c serial.c
 ASM_OBJECTS := $(patsubst %.s,build/%.s.o,$(ASM_SOURCES))
 C_OBJECTS := $(patsubst %.c,build/%.c.o,$(C_SOURCES))
 

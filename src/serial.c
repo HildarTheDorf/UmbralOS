@@ -1,18 +1,8 @@
 #include "serial.h"
 
-#include <stdint.h>
+#include "intel.h"
 
 #define COM1 0x3f8
-
-static uint8_t inb(uint16_t port) {
-    uint8_t value;
-    __asm volatile("in %1,%0" : "=a"(value) : "Nd"(port));
-    return value;
-}
-
-static void outb(uint16_t port, uint8_t value) {
-    __asm("out %0,%1" : :  "a"(value), "Nd"(port));
-}
 
 void serial_init(void) {
     outb(COM1 + 1, 0x00); // Disable Interrupts

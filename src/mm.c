@@ -6,13 +6,6 @@
 #include <limine.h>
 #include <limits.h>
 
-enum memory_flags {
-    M_NONE = 0x0,
-    M_W = 0x1,
-    M_X = 0x2,
-    M_U = 0x4
-};
-
 static struct {
     size_t num_pages;
     uint8_t *bitmap;
@@ -144,8 +137,13 @@ void pmm_init(const struct limine_memmap_response *limine_memmap_response, void 
 void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, void *stack_origin, size_t stack_size) {
     for (uint64_t i = 0; i < limine_memmap_response->entry_count; ++i) {
         const struct limine_memmap_entry *limine_memmap_entry = limine_memmap_response->entries[i];
-        if (limine_memmap_entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE) {
+        switch (limine_memmap_entry->type) {
+        case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
+        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
             pmm_mark_range(limine_memmap_entry->base, limine_memmap_entry->length, true);
+            break;
+        default:
+            break;
         }
     }
 
@@ -167,6 +165,7 @@ void pmm_zero(void) {
 static void *vmm_ensure_present(struct page_directory_entry_subdirectory *entry) {
     if (!entry->p) {
         const phy_t page = pmm_alloc_page();
+        memzero(phy_to_virt(page), PAGE_SIZE);
 
         entry->xd = 0;
         entry->addr = page >> 12;
@@ -212,7 +211,7 @@ static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
 }
 
 
-static void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags) {
+void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags) {
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         vmm_map_page(what + i, (void *)((uintptr_t)where + i), flags);
     }
@@ -224,17 +223,20 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
 
     for (uint64_t i = 0; i < limine_memmap_response->entry_count; ++i) {
         const struct limine_memmap_entry *limine_memmap_entry = limine_memmap_response->entries[i];
+     
         switch (limine_memmap_entry->type) {
         case LIMINE_MEMMAP_USABLE:
-        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-        case LIMINE_MEMMAP_FRAMEBUFFER:
-            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
-            break;
         case LIMINE_MEMMAP_RESERVED:
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
+        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
+            const phy_t what = round_down(limine_memmap_entry->base, PAGE_SIZE);
+            const size_t size = round_up(limine_memmap_entry->base + limine_memmap_entry->length, PAGE_SIZE) - limine_memmap_entry->base;
+            vmm_map(what, phy_to_virt(what), size, M_W);
+            break;
         case LIMINE_MEMMAP_ACPI_NVS:
         case LIMINE_MEMMAP_BAD_MEMORY:
-        case LIMINE_MEMMAP_KERNEL_AND_MODULES:  
+        case LIMINE_MEMMAP_KERNEL_AND_MODULES:
+        case LIMINE_MEMMAP_FRAMEBUFFER:  
         default:
             break;
         }

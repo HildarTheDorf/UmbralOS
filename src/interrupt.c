@@ -1,8 +1,38 @@
 #include "intel.h"
 #include "common.h"
+#include "mm.h"
 #include "security.h"
 
 #include <stdint.h>
+
+#define PIC1 0x20
+#define PIC1_COMMAND (PIC1 + 0)
+#define PIC1_DATA (PIC1 + 1)
+
+#define PIC2 0xA0
+#define PIC2_COMMAND (PIC2 + 0)
+#define PIC2_DATA (PIC2 + 1)
+
+#define PIC_ICW1_ICW4 0x01
+#define PIC_ICW1_INIT 0x10
+#define PIC_ICW4_8086 0x01
+
+#define PIC_READ_ISR 0x0B
+#define PIC_EOI 0x20
+
+#define MSR_IA32_APIC_BASE 0x1B
+#define MSR_IA32_APIC_BASE_BSP 1 << 8
+#define MSR_IA32_APIC_BASE_EXTD 1 << 10
+#define MSR_IA32_APIC_BASE_EN 1 << 11
+#define MSR_IA32_APIC_BASE_MASK 0xF'FFFF'F000
+
+#define MSR_X2APIC_BASE 0x800
+
+#define LAPIC_REGISTER_SIZE 0x10
+#define LAPIC_REGISTER_MAX 0x40
+
+#define LAPIC_REGISTER_IDX_SPIV 0xF
+#define LAPIC_SPIV_ENABLE 0x100
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -281,6 +311,9 @@ struct stack_frame {
     uint64_t ss;
 };
 
+static void *LAPIC_BASE;
+static bool HAS_X2APIC;
+
 #define I(X) extern void interrupt_stub_##X(void);
 FOR_EACH_INTERRUPT
 #undef I
@@ -297,6 +330,101 @@ static struct idt_entry IDT[IDT_IDX_MAX + 1] = {
 };
 
 #undef I
+
+static void legacy_pic_init_and_disable(uint8_t master_offset, uint8_t slave_offset) {
+    // ICW1: Begin INIT sequence, including ICW4
+    outb(PIC1_COMMAND, PIC_ICW1_INIT | PIC_ICW1_ICW4);
+    outb(PIC2_COMMAND, PIC_ICW1_INIT | PIC_ICW1_ICW4);
+
+    // ICW2: Map interrupts to IDT vectors
+    outb(PIC1_DATA, master_offset);
+    outb(PIC2_DATA, slave_offset);
+
+    // ICW3: Configure cascade
+    outb(PIC1_DATA, 4); // Slave PIC at IRQ2 (mask)
+    outb(PIC2_DATA, 2); // Slave PIC is IRQ2 (value)
+
+    // ICW4: Enable 8086 mode
+    outb(PIC1_DATA, PIC_ICW4_8086);
+    outb(PIC2_DATA, PIC_ICW4_8086);
+
+    // Mask all interrupts
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC2_DATA, 0xFF);
+}
+
+static uint64_t rdmsr(uint32_t msr) {
+    uint32_t valhigh, vallow;
+    __asm("rdmsr" : "=d"(valhigh), "=a"(vallow) : "c"(msr));
+    return ((uint64_t)valhigh << 32) | ((uint64_t)vallow);
+}
+
+static void wrmsr(uint32_t msr, uint64_t value) {
+    const uint32_t valhigh = value >> 32;
+    const uint32_t vallow = value & 0xFFFF;
+    __asm("wrmsr" : : "d"(valhigh), "a"(vallow), "c"(msr));
+}
+
+static uint32_t *xapic1_get_register(uint8_t reg) {
+    return (void *)((uintptr_t)LAPIC_BASE + reg * LAPIC_REGISTER_SIZE);
+}
+
+static uint32_t lapic_read(uint8_t reg) {
+    if (reg > LAPIC_REGISTER_MAX) panic("LAPIC Register 0x%x out of range", reg);
+
+    if (HAS_X2APIC) {
+        return rdmsr(MSR_X2APIC_BASE + reg);
+    } else {
+        return *xapic1_get_register(reg);
+    }
+}
+
+static void lapic_write(uint8_t reg, uint32_t value) {
+    if (reg > LAPIC_REGISTER_MAX) panic("LAPIC Register 0x%x out of range", reg);
+
+    if (HAS_X2APIC) {
+        wrmsr(MSR_X2APIC_BASE + reg, value);
+    } else {
+        *xapic1_get_register(reg) = value;
+    }
+}
+
+static void lapic_init(void) {
+    const struct cpuid_result cpuid_result = cpuid(1, 0);
+    HAS_X2APIC = !!(cpuid_result.ecx & CPUID_1_ECX_X2APIC);
+
+    uint64_t lapic_base = rdmsr(MSR_IA32_APIC_BASE);
+
+    if (!(lapic_base & MSR_IA32_APIC_BASE_EN)) {
+        lapic_base |= MSR_IA32_APIC_BASE_EN;
+        wrmsr(MSR_IA32_APIC_BASE, lapic_base);
+    }
+    if (HAS_X2APIC) {
+        if (!(lapic_base & MSR_IA32_APIC_BASE_EXTD)) {
+            lapic_base |= MSR_IA32_APIC_BASE_EXTD;
+            wrmsr(MSR_IA32_APIC_BASE, lapic_base);
+        }
+    } else {
+        const phy_t lapic_base_phy = lapic_base & MSR_IA32_APIC_BASE_MASK;
+        void *lapic_base_virt = phy_to_virt(lapic_base_phy);
+        vmm_map(lapic_base_phy, lapic_base_virt, LAPIC_REGISTER_MAX * LAPIC_REGISTER_SIZE, M_W);
+        LAPIC_BASE = lapic_base_virt;
+    }
+
+    lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
+}
+
+static void ioapic_init(void) {
+
+}
+
+void configure_interrupts(void) {
+    legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);    
+    lapic_init();
+    ioapic_init();
+
+    __asm("sti");
+}
 
 static void dump_interrupt_frame(const struct stack_frame *stack_frame) {
     kprint("r11: 0x%lx\n", stack_frame->r11);
@@ -319,18 +447,133 @@ static void dump_interrupt_frame(const struct stack_frame *stack_frame) {
 
 void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     enforce_smap();
-    dump_interrupt_frame(stack_frame);
 
     switch (vector) {
-    case IDT_IDX_PF:
+    case IDT_IDX_EXCEPTION_DE:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #DE\n");
+        break;
+    case IDT_IDX_EXCEPTION_DB:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #DB\n");
+        break;
+    case IDT_IDX_EXCEPTION_NMI:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled NMI\n");
+        break;
+    case IDT_IDX_EXCEPTION_BP:
+        kprint("#BP recieved\n");
+        dump_interrupt_frame(stack_frame);
+        kprint("Resuming after #BP\n");
+        break;
+    case IDT_IDX_EXCEPTION_OF:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #OF\n");
+        break;
+    case IDT_IDX_EXCEPTION_BR:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #BR\n");
+        break;
+    case IDT_IDX_EXCEPTION_UD:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #UD\n");
+        break;
+    case IDT_IDX_EXCEPTION_NM:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #NM\n");
+        break;
+    case IDT_IDX_EXCEPTION_DF:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #DF\n");
+        break;
+    case IDT_IDX_EXCEPTION_CSO:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled CSO\n");
+        break;
+    case IDT_IDX_EXCEPTION_TS:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #TS\n");
+        break;
+    case IDT_IDX_EXCEPTION_NP:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #NP\n");
+        break;
+    case IDT_IDX_EXCEPTION_SS:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #SS\n");
+        break;
+    case IDT_IDX_EXCEPTION_GP:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #GP\n");
+        break;
+    case IDT_IDX_EXCEPTION_PF:
         uint64_t cr2;
         __asm volatile("mov %%cr2,%0" : "=r"(cr2));
-        panic("Unhandled #PF(%lx)\n", cr2);
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #PF(0x%lx)\n", cr2);
+        break;
+    case IDT_IDX_EXCEPTION_MF:
+        panic("Unhandled #MF\n");
+        break;
+    case IDT_IDX_EXCEPTION_AC:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #AC\n");
+        break;
+    case IDT_IDX_EXCEPTION_MC:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #MC\n");
+        break;
+    case IDT_IDX_EXCEPTION_XM:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #XM/XF\n");
+        break;
+    case IDT_IDX_EXCEPTION_VE:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #VE\n");
+        break;
+    case IDT_IDX_EXCEPTION_CP:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #CP\n");
+        break;
+    case IDT_IDX_EXCEPTION_HV:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #HV\n");
+        break;
+    case IDT_IDX_EXCEPTION_VC:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #VC\n");
+        break;
+    case IDT_IDX_EXCEPTION_SX:
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled #SX\n");
+        break;
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 0:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 1:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 2:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 3:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 4:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 5:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 6:
+    case IDT_IDX_LEGACY_PIC_MASTER_BASE + 7:
+        kprint("Spurious Interrupt 0x%x (Legacy PIC Master)", vector);
+        break;
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 0:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 1:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 2:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 3:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 4:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 5:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 6:
+    case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
+        kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
+        break;
+    case IDT_IDX_LAPIC_SPURIOUS:
+        kprint("Spurious Interrupt (LAPIC)");
+        // Do NOT send EOI. SDM 12.9: Spurious Interrupt
+        break;          
     default:
-        if (vector <= IDT_IDX_MAX_RESERVED) {
-            panic("Unhandled Exception 0x%x\n", vector);
-        }
-        kprint("Unhandled Interrupt 0x%x\n", vector);
+        dump_interrupt_frame(stack_frame);
+        panic("Unhandled Interrupt 0x%x\n", vector);
     }
 }
 

@@ -18,36 +18,50 @@
 #define GDT_IDX_TSS 3
 #define GDT_IDX_MAX 5
 
-#define IDT_IDX_DE 0x00
-#define IDT_IDX_DB 0x01
-#define IDT_IDX_NMI 0x02
-#define IDT_IDX_BP 0x03
-#define IDT_IDX_OF 0x04
-#define IDT_IDX_BR 0x05
-#define IDT_IDX_UD 0x06
-#define IDT_IDX_NM 0x07
-#define IDT_IDX_DF 0x08
-#define IDT_IDX_CSO 0x09
-#define IDT_IDX_TS 0x0A
-#define IDT_IDX_NP 0x0B
-#define IDT_IDX_SS 0x0C
-#define IDT_IDX_GP 0x0D
-#define IDT_IDX_PF 0x0E
-#define IDT_IDX_MF 0x10
-#define IDT_IDX_AC 0x11
-#define IDT_IDX_MC 0x12
-#define IDT_IDX_XM 0x13
-#define IDT_IDX_XF 0x13
-#define IDT_IDX_VE 0x14
-#define IDT_IDX_CP 0x15
-#define IDT_IDX_HV 0x1C
-#define IDT_IDX_VC 0x1D
-#define IDT_IDX_SX 0x1E
-#define IDT_IDX_MAX_RESERVED 0x1F
+#define IDT_IDX_EXCEPTION_DE 0x00
+#define IDT_IDX_EXCEPTION_DB 0x01
+#define IDT_IDX_EXCEPTION_NMI 0x02
+#define IDT_IDX_EXCEPTION_BP 0x03
+#define IDT_IDX_EXCEPTION_OF 0x04
+#define IDT_IDX_EXCEPTION_BR 0x05
+#define IDT_IDX_EXCEPTION_UD 0x06
+#define IDT_IDX_EXCEPTION_NM 0x07
+#define IDT_IDX_EXCEPTION_DF 0x08
+#define IDT_IDX_EXCEPTION_CSO 0x09
+#define IDT_IDX_EXCEPTION_TS 0x0A
+#define IDT_IDX_EXCEPTION_NP 0x0B
+#define IDT_IDX_EXCEPTION_SS 0x0C
+#define IDT_IDX_EXCEPTION_GP 0x0D
+#define IDT_IDX_EXCEPTION_PF 0x0E
+#define IDT_IDX_EXCEPTION_MF 0x10
+#define IDT_IDX_EXCEPTION_AC 0x11
+#define IDT_IDX_EXCEPTION_MC 0x12
+#define IDT_IDX_EXCEPTION_XM 0x13
+#define IDT_IDX_EXCEPTION_XF 0x13 // Duplicate name
+#define IDT_IDX_EXCEPTION_VE 0x14
+#define IDT_IDX_EXCEPTION_CP 0x15
+#define IDT_IDX_EXCEPTION_HV 0x1C
+#define IDT_IDX_EXCEPTION_VC 0x1D
+#define IDT_IDX_EXCEPTION_SX 0x1E
+#define IDT_IDX_EXCEPTION_MAX 0x1F
+#define IDT_IDX_LEGACY_PIC_MASTER_BASE 0x20
+#define IDT_IDX_LEGACY_PIC_SLAVE_BASE 0x28
+#define IDT_IDX_LAPIC_SPURIOUS 0xFF
 #define IDT_IDX_MAX 0xFF
 
 #define PL_KERNEL 0
 #define PL_USER 3
+
+#define CPUID_1_ECX_X2APIC (1 << 21)
+#define CPUID_7_0_EBX_SMAP (1 << 20)
+#define CPUID_7_0_EBX_SMEP (1 << 7)
+#define CPUID_7_0_ECX_UMIP (1 << 2)
+
+struct cpuid_result {
+    uint64_t eax, ebx, ecx, edx;
+};
+
+
 
 struct [[gnu::packed]] dtr {
     uint16_t limit;
@@ -178,3 +192,6 @@ struct [[gnu::packed, gnu::aligned(8)]] page_table_entry {
     uint64_t xd       : 1;
 };
 
+struct cpuid_result cpuid(uint32_t eax, uint32_t ecx);
+uint8_t inb(uint16_t port);
+void outb(uint16_t port, uint8_t value);

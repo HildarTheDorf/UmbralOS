@@ -70,10 +70,15 @@ static void print_escape(const char **p, va_list va, bool is_long) {
 
 [[noreturn]]
 void halt(void) {
-    __asm("cli");
     while (true) {
         __asm("hlt");
     }
+}
+
+[[noreturn]]
+void halt_and_catch_fire(void) {
+    __asm("cli");
+    halt();
 }
 
 [[gnu::format(printf, 1, 2)]]
@@ -106,6 +111,15 @@ void memzero(void *s, size_t n) {
     memset(s, 0, n);
 }
 
+int strncmp(const char *s1, const char *s2, size_t n)
+{
+    for (size_t i = 0; i < n; ++i) {
+        if (s1[i] != s2[i]) return s1[i] - s2[i];
+        if (s1[i] == '\0') return 0;
+    }
+    return 0;
+}
+
 [[noreturn, gnu::format(printf, 1, 2)]]
 void panic(const char *format, ...) {
     kprint("PANIC: ");
@@ -116,6 +130,5 @@ void panic(const char *format, ...) {
     va_end(va);
 
     kprint("\n");
-
-    halt();
+    halt_and_catch_fire();
 }
