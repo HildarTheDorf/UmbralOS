@@ -86,7 +86,7 @@ struct [[gnu::packed]] MADTLocalAPICNMI {
     uint8_t lint;
 };
 
-static void validate_sdt([[gnu::aligned(16)]] const struct SDTHeader *pSDT) {
+static void validate_sdt(const struct SDTHeader *pSDT) {
     uint8_t checksum = 0;
     for (size_t i = 0; i < pSDT->length; ++i) {
         checksum += ((const uint8_t *)pSDT)[i];
@@ -94,7 +94,7 @@ static void validate_sdt([[gnu::aligned(16)]] const struct SDTHeader *pSDT) {
     if (checksum) panic("Invalid SDT. Expected 0, got %u\n", checksum);
 }
 
-static void validate_rsdp([[gnu::aligned(16)]] const struct RSDP *pRSDP) {
+static void validate_rsdp(const struct RSDP *pRSDP) {
     uint8_t checksum = 0;
     for (size_t i = 0; i < sizeof(struct RSDP); ++i) {
         checksum += ((const uint8_t *)pRSDP)[i];
@@ -102,7 +102,7 @@ static void validate_rsdp([[gnu::aligned(16)]] const struct RSDP *pRSDP) {
     if (checksum) panic("Invalid RSDP. Expected 0, got %u\n", checksum);
 }
 
-static void validate_xsdp([[gnu::aligned(16)]] const struct XSDP *pXSDP) {
+static void validate_xsdp(const struct XSDP *pXSDP) {
     uint8_t checksum = 0;
     for (size_t i = 0; i < sizeof(struct XSDP); ++i) {
         checksum += ((const uint8_t *)pXSDP)[i];
@@ -110,7 +110,7 @@ static void validate_xsdp([[gnu::aligned(16)]] const struct XSDP *pXSDP) {
     if (checksum) panic("Invalid XSDP. Expected 0, got %u\n", checksum);
 }
 
-static void parse_madt([[gnu::aligned(16)]] const struct MADT *pMADT) {
+static void parse_madt(const struct MADT *pMADT) {
     for (uint32_t i = 0; i + offsetof(struct MADT, records) < pMADT->h.length; i += ((const struct MADTEntryHeader *)&pMADT->records[i])->length) {
         const struct MADTEntryHeader *pHeader = (const void *)&pMADT->records[i];
         switch (pHeader->type) {
@@ -136,15 +136,14 @@ static void parse_madt([[gnu::aligned(16)]] const struct MADT *pMADT) {
     }
 }
 
-static void parse_sdt([[gnu::aligned(16)]] const struct SDTHeader *pSDT) {
+static void parse_sdt(const struct SDTHeader *pSDT) {
     validate_sdt(pSDT);
     if (!strncmp(pSDT->signature, "APIC", 4)) {
         parse_madt((const struct MADT *)pSDT);
     }
 }
 
-void acpi_parse_rsdp([[gnu::aligned(16)]] const void *pRSDP) {
-    [[gnu::aligned(16)]]
+void acpi_parse_rsdp(const void *pRSDP) {
     const struct XSDP *pXSDP = pRSDP;
     validate_rsdp(&pXSDP->rsdp);
 
@@ -152,7 +151,6 @@ void acpi_parse_rsdp([[gnu::aligned(16)]] const void *pRSDP) {
     if (has_xsdp) {
         validate_xsdp(pXSDP);
 
-        [[gnu::aligned(16)]]
         const struct XSDT *pXSDT = phy_to_virt(pXSDP->xsdt_address);
         validate_sdt(&pXSDT->h);
 
@@ -161,7 +159,6 @@ void acpi_parse_rsdp([[gnu::aligned(16)]] const void *pRSDP) {
             parse_sdt(phy_to_virt(pXSDT->sdt64[i]));
         }
     } else {
-        [[gnu::aligned(16)]]
         const struct RSDT *pRSDT = phy_to_virt(pXSDP->rsdp.rsdt_address);
         validate_sdt(&pRSDT->h);
 
