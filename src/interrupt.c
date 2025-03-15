@@ -555,7 +555,7 @@ static void parse_madt(void) {
             if (madt_ioapic->global_system_interrupt_base != 0) panic("Remapping the entire I/O APIC is not supported");
 
             IOAPIC_BASE = phy_to_virt(madt_ioapic->address);
-            vmm_map(madt_ioapic->address, IOAPIC_BASE, PAGE_SIZE, M_W);
+            vmm_map(madt_ioapic->address, IOAPIC_BASE, 0x20, M_W);
             break;
         }
         case 2: {
