@@ -532,7 +532,7 @@ static void ioapic_init() {
         ioapic_write64(IOAPICREDTBL(i), IOAPICREDTBL_MASK);
     }
 
-    ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
+        ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
 }
 
 static void parse_madt(void) {
@@ -541,10 +541,11 @@ static void parse_madt(void) {
         switch (madt_entry->type) {
         case 0: {
             const struct MADTProcessorLocalAPIC *madt_lapic = (const void *)madt_entry;
-            if (madt_lapic->processor_id != 0) panic("Multiple CPUs  not supported");
-
-            if (madt_lapic->flags & 0x1) {
-                legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);
+            if (madt_lapic->processor_id == 0) {
+                // BSP
+                if (madt_lapic->flags & 0x1) {
+                    legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);
+                }
             }
             break;
         }
@@ -571,14 +572,15 @@ static void parse_madt(void) {
         }
         case 4: {
             const struct MADTLocalAPICNMI *madt_nmi = (const void *)madt_entry;
-            if (madt_nmi->processor_id != 0 && madt_nmi->processor_id != 0xFF) panic("Multiple CPUs not supported");
+            if (madt_nmi->processor_id == 0 || madt_nmi->processor_id != 0xFF) {
+                // BSP or ALL_CPUS
+                const uint8_t polarity = (madt_nmi->flags >> 0) & 0x3;
+                const uint8_t trigger = (madt_nmi->flags >> 2) & 0x3;
 
-            const uint8_t polarity = (madt_nmi->flags >> 0) & 0x3;
-            const uint8_t trigger = (madt_nmi->flags >> 2) & 0x3;
-
-            NMI_REDIRECTION.lint = madt_nmi->lint;
-            NMI_REDIRECTION.is_active_low = polarity == 0x3;
-            NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+                NMI_REDIRECTION.lint = madt_nmi->lint;
+                NMI_REDIRECTION.is_active_low = polarity == 0x3;
+                NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+            }
             break;
         }
         default:
