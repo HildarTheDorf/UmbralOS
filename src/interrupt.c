@@ -32,6 +32,22 @@
 #define LAPIC_REGISTER_MAX 0x40
 
 #define LAPIC_REGISTER_IDX_SPIV 0xF
+#define LAPIC_REGISTER_IDX_LVT_CMCI 0x2F
+#define LAPIC_REGISTER_IDX_LVT_TIMER 0x32
+#define LAPIC_REGISTER_IDX_LVT_THERM 0x33
+#define LAPIC_REGISTER_IDX_LVT_PERFC 0x34
+#define LAPIC_REGISTER_IDX_LVT_LINT0 0x35
+#define LAPIC_REGISTER_IDX_LVT_LINT1 0x36
+#define LAPIC_REGISTER_IDX_LVT_ERROR 0x37
+
+#define LAPIC_LVT_DELIVERY_FIXED (0b000 << 8)
+#define LAPIC_LVT_DELIVERY_SMI (0b010 << 8)
+#define LAPIC_LVT_DELIVERY_NMI (0b100 << 8)
+#define LAPIC_LVT_DELIVERY_EXTINT (0b111 << 8)
+#define LAPIC_LVT_DELIVERY_INIT (0b101 << 8)
+
+#define LAPIC_LVT_MASK (1 << 16)
+
 #define LAPIC_SPIV_ENABLE 0x100
 
 #define FOR_EACH_INTERRUPT \
@@ -311,8 +327,10 @@ struct stack_frame {
     uint64_t ss;
 };
 
-static void *LAPIC_BASE;
 static bool HAS_X2APIC;
+
+static void *LAPIC_BASE;
+static void *IOAPIC_BASE;
 
 #define I(X) extern void interrupt_stub_##X(void);
 FOR_EACH_INTERRUPT
@@ -365,12 +383,12 @@ static void wrmsr(uint32_t msr, uint64_t value) {
     __asm("wrmsr" : : "d"(valhigh), "a"(vallow), "c"(msr));
 }
 
-static uint32_t *xapic1_get_register(uint8_t reg) {
+static volatile uint32_t *xapic1_get_register(uint8_t reg) {
     return (void *)((uintptr_t)LAPIC_BASE + reg * LAPIC_REGISTER_SIZE);
 }
 
 static uint32_t lapic_read(uint8_t reg) {
-    if (reg > LAPIC_REGISTER_MAX) panic("LAPIC Register 0x%x out of range", reg);
+    if (reg > LAPIC_REGISTER_MAX) panic("lapic_read: LAPIC Register 0x%x out of range", reg);
 
     if (HAS_X2APIC) {
         return rdmsr(MSR_X2APIC_BASE + reg);
@@ -380,8 +398,7 @@ static uint32_t lapic_read(uint8_t reg) {
 }
 
 static void lapic_write(uint8_t reg, uint32_t value) {
-    if (reg > LAPIC_REGISTER_MAX) panic("LAPIC Register 0x%x out of range", reg);
-
+    if (reg > LAPIC_REGISTER_MAX) panic("lapic_write: LAPIC Register 0x%x out of range", reg);
     if (HAS_X2APIC) {
         wrmsr(MSR_X2APIC_BASE + reg, value);
     } else {
@@ -411,11 +428,58 @@ static void lapic_init(void) {
         LAPIC_BASE = lapic_base_virt;
     }
 
+    lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_THERM, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_PERFC, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_EXTINT);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_ERROR, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
 }
 
-static void ioapic_init(void) {
+static uint32_t ioapic_read32(uint8_t reg) {
+    *(volatile uint32_t *)IOAPIC_BASE = reg;
+    return *(volatile uint32_t *)((uintptr_t)IOAPIC_BASE + 0x10);
+}
 
+static uint64_t ioapic_read64(uint8_t reg) {
+    const uint32_t loval = ioapic_read32(reg);
+    const uint32_t hival = ioapic_read32(reg + 1);
+
+    return (((uint64_t)hival) << 32) | (uint64_t)loval;
+}
+
+static void ioapic_write32(uint8_t reg, uint32_t value) {
+    *(volatile uint32_t *)IOAPIC_BASE = reg;
+    *(volatile uint32_t *)((uintptr_t)IOAPIC_BASE + 0x10) = value;
+}
+
+static void ioapic_write64(uint8_t reg, uint64_t value) {
+    ioapic_write32(reg, value & 0xFFFF'FFFF);
+    ioapic_write32(reg + 1, value >> 32);
+}
+
+static void ioapic_init(void) {
+    // FIXME: All of this is hardcoded for qemu
+    const phy_t ioapic_phy = 0xFEC00000;
+    void *ioapic_virt = phy_to_virt(ioapic_phy);
+    vmm_map(ioapic_phy, ioapic_virt, 0x20, M_W);
+    IOAPIC_BASE = phy_to_virt(0xFEC00000);
+
+    const uint32_t ioapicver = ioapic_read32(0x01);
+    for (uint8_t i = 0; i <= (ioapicver >> 16); ++i) {
+        switch (i) {
+        case 0x5:
+        case 0x9:
+        case 0xA:
+        case 0xB:
+            ioapic_write64(0x10 + i * 2, (1 << 15) | 0x30);
+            break;
+        default:
+            ioapic_write64(0x10 + i * 2, 0x30);
+            break;
+        }
+    }
 }
 
 void configure_interrupts(void) {
