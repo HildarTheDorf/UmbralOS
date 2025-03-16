@@ -302,12 +302,10 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
     for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
         const Elf64_Phdr *phdr = &elf_phdrs[i];
         if (phdr->p_type == PT_LOAD) {
-            const Elf64_Addr base = round_down(phdr->p_vaddr, PAGE_SIZE);
-            const Elf64_Addr end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
-            vmm_map(
-                limine_kernel_address_response->physical_base + base,
-                (void *)(limine_kernel_address_response->virtual_base + base),
-                end - base, elf_to_memory_flags(phdr->p_flags)
+            vmm_map_unaligned(
+                limine_kernel_address_response->physical_base + phdr->p_vaddr,
+                (void *)(limine_kernel_address_response->virtual_base + phdr->p_vaddr),
+                phdr->p_memsz, elf_to_memory_flags(phdr->p_flags)
             );
         }
     }
@@ -315,12 +313,10 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
     for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
         const Elf64_Phdr *phdr = &elf_phdrs[i];
         if (phdr->p_type == PT_GNU_RELRO) {
-            const Elf64_Addr base = round_down(phdr->p_vaddr, PAGE_SIZE);
-            const Elf64_Addr end = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
-            vmm_map(
-                limine_kernel_address_response->physical_base + base,
-                (void *)(limine_kernel_address_response->virtual_base + base),
-                end - base, elf_to_memory_flags(phdr->p_flags)
+            vmm_map_unaligned(
+                limine_kernel_address_response->physical_base + phdr->p_vaddr,
+                (void *)(limine_kernel_address_response->virtual_base + phdr->p_vaddr),
+                phdr->p_memsz, elf_to_memory_flags(phdr->p_flags)
             );
         }
     }
