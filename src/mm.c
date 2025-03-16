@@ -6,6 +6,13 @@
 #include <limine.h>
 #include <limits.h>
 
+#define PAT_UC 0x00
+#define PAT_WC 0x01
+#define PAT_WT 0x04
+#define PAT_WP 0x05
+#define PAT_WB 0x06
+#define PAT_UCM 0x07
+
 static struct {
     size_t num_pages;
     uint8_t *bitmap;
@@ -190,7 +197,26 @@ static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
     const bool is_w = !!(flags & M_W);
     const bool is_x = !!(flags & M_X);
     const bool is_u = !!(flags & M_U);
-    const bool is_uc = !!(flags & M_UC);
+
+    // pat/pcd/pwt 0b000 is WB, for normal memory
+    // pat/pcd/pwt 0b010 is UC-, for MMIO
+    // pat/pcd/pwt 0b101 is WC, for framebuffers
+    // See SDM 13.12 for description of the PAT
+    // Credit to Limine as we base our PAT layout on the one specified by PROTOCOL.md
+    uint8_t pat;
+    switch (flags & M_CACHE_MASK) {
+    case M_CACHE_WB:
+        pat = 0b000;
+        break;
+    case M_CACHE_UC:
+        pat = 0b010;
+        break;
+    case M_CACHE_WC:
+        pat = 0b101;
+        break;
+    default:
+        panic("Unknown memory caching mode %x", flags & M_CACHE_MASK);
+    }
 
     const uint16_t pml4_index = (((uintptr_t)where) >> 39) & 0x1FF;
     struct page_directory_entry_subdirectory *pdpt = vmm_ensure_present(&PML4[pml4_index]);
@@ -202,18 +228,15 @@ static void vmm_map_page(phy_t what, void *where, enum memory_flags flags) {
     struct page_table_entry *pt = vmm_ensure_present(&pd[pd_index]);
 
     const uint16_t pt_index = (((uintptr_t)where) >> 12) & 0x1FF;
-
-    // pat/pcd/pwt 0b000 is WB, for normal memory
-    // pat/pcd/pwt 0b111 is UC-, for MMIO
     pt[pt_index].xd = !is_x;
     pt[pt_index].pk = 0x0;
     pt[pt_index].addr = what >> 12;
     pt[pt_index].g = 0;
-    pt[pt_index].pat = is_uc;
+    pt[pt_index].pat = !!(pat & 0b100);
     pt[pt_index].a = 0;
     pt[pt_index].d = 0;
-    pt[pt_index].pcd = is_uc;
-    pt[pt_index].pwt = is_uc;
+    pt[pt_index].pcd = !!(pat & 0b010);
+    pt[pt_index].pwt = !!(pat & 0b001);
     pt[pt_index].us = is_u;
     pt[pt_index].rw = is_w;
     pt[pt_index].p = 1;
@@ -238,6 +261,16 @@ void vmm_map_unaligned(phy_t what, void *where, size_t size, enum memory_flags f
 }
 
 void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {            
+    // Init PAT 
+    uint64_t pat = 0;
+    pat |= (uint64_t)PAT_WB  << 0;
+    pat |= (uint64_t)PAT_WT  << 8;  
+    pat |= (uint64_t)PAT_UCM << 16;
+    pat |= (uint64_t)PAT_UC  << 24;
+    pat |= (uint64_t)PAT_WP  << 32; 
+    pat |= (uint64_t)PAT_WC  << 40;
+    wrmsr(MSR_IA32_PAT, pat);
+
     PML4 = phy_to_virt(pmm_alloc_page());
     memzero(PML4, PAGE_SIZE);
 
@@ -251,12 +284,14 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
             break;
         case LIMINE_MEMMAP_RESERVED:
-            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_UC | M_W);
+            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_UC | M_W);
+            break;
+        case LIMINE_MEMMAP_FRAMEBUFFER:
+            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_WC | M_W);
             break;
         case LIMINE_MEMMAP_ACPI_NVS:
         case LIMINE_MEMMAP_BAD_MEMORY:
         case LIMINE_MEMMAP_KERNEL_AND_MODULES:
-        case LIMINE_MEMMAP_FRAMEBUFFER:  
         default:
             break;
         }

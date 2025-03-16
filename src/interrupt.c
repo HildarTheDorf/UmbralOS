@@ -21,14 +21,6 @@
 #define PIC_READ_ISR 0x0B
 #define PIC_EOI 0x20
 
-#define MSR_IA32_APIC_BASE 0x1B
-#define MSR_IA32_APIC_BASE_BSP 1 << 8
-#define MSR_IA32_APIC_BASE_EXTD 1 << 10
-#define MSR_IA32_APIC_BASE_EN 1 << 11
-#define MSR_IA32_APIC_BASE_MASK 0xF'FFFF'F000
-
-#define MSR_X2APIC_BASE 0x800
-
 #define LAPIC_REGISTER_SIZE 0x10
 #define LAPIC_REGISTER_MAX 0x40
 
@@ -413,18 +405,6 @@ static void legacy_pic_init_and_disable(uint8_t master_offset, uint8_t slave_off
     outb(PIC2_DATA, 0xFF);
 }
 
-static uint64_t rdmsr(uint32_t msr) {
-    uint32_t valhigh, vallow;
-    __asm volatile("rdmsr" : "=d"(valhigh), "=a"(vallow) : "c"(msr));
-    return ((uint64_t)valhigh << 32) | ((uint64_t)vallow);
-}
-
-static void wrmsr(uint32_t msr, uint64_t value) {
-    const uint32_t valhigh = value >> 32;
-    const uint32_t vallow = value & 0xFFFF;
-    __asm("wrmsr" : : "d"(valhigh), "a"(vallow), "c"(msr));
-}
-
 static volatile uint32_t *xapic1_get_register(uint8_t reg) {
     return (void *)((uintptr_t)LAPIC_BASE + reg * LAPIC_REGISTER_SIZE);
 }
@@ -555,7 +535,7 @@ static void parse_madt(void) {
             if (madt_ioapic->global_system_interrupt_base != 0) panic("Remapping the entire I/O APIC is not supported");
 
             IOAPIC_BASE = phy_to_virt(madt_ioapic->address);
-            vmm_map_unaligned(madt_ioapic->address, IOAPIC_BASE, 0x20, M_UC | M_W);
+            vmm_map_unaligned(madt_ioapic->address, IOAPIC_BASE, 0x20, M_CACHE_UC | M_W);
             break;
         }
         case 2: {

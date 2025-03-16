@@ -60,11 +60,18 @@
 #define CPUID_7_0_EBX_SMEP (1 << 7)
 #define CPUID_7_0_ECX_UMIP (1 << 2)
 
+#define MSR_IA32_APIC_BASE 0x1B
+#define MSR_IA32_APIC_BASE_BSP 1 << 8
+#define MSR_IA32_APIC_BASE_EXTD 1 << 10
+#define MSR_IA32_APIC_BASE_EN 1 << 11
+#define MSR_IA32_APIC_BASE_MASK 0xF'FFFF'F000
+
+#define MSR_IA32_PAT 0x277
+#define MSR_X2APIC_BASE 0x800
+
 struct cpuid_result {
     uint64_t eax, ebx, ecx, edx;
 };
-
-
 
 struct [[gnu::packed]] dtr {
     uint16_t limit;
@@ -198,3 +205,5 @@ struct [[gnu::packed, gnu::aligned(8)]] page_table_entry {
 struct cpuid_result cpuid(uint32_t eax, uint32_t ecx);
 uint8_t inb(uint16_t port);
 void outb(uint16_t port, uint8_t value);
+uint64_t rdmsr(uint32_t msr);
+void wrmsr(uint32_t msr, uint64_t value);

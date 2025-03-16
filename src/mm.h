@@ -8,10 +8,15 @@
 
 enum memory_flags {
     M_NONE = 0x0,
+
     M_W = 0x1,
     M_X = 0x2,
     M_U = 0x4,
-    M_UC = 0x8,
+
+    M_CACHE_WB = 0x0,
+    M_CACHE_UC = 0x8,
+    M_CACHE_WC = 0x10,
+    M_CACHE_MASK = 0x18,
 };
 
 typedef uint32_t phy32_t;
