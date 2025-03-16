@@ -1,5 +1,4 @@
 #include "common.h"
-#include "serial.h"
 
 #include <stdbool.h>
 #include <stdint.h>
