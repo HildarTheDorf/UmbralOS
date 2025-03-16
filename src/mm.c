@@ -260,7 +260,10 @@ void vmm_map_unaligned(phy_t what, void *where, size_t size, enum memory_flags f
     vmm_map(aligned_what, aligned_where, aligned_end - aligned_what, flags);
 }
 
-void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {            
+void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {     
+    const struct cpuid_result cpuid_result = cpuid(1, 0);
+    if (!(cpuid_result.edx & (1 << 16))) panic("No PAT support");
+
     uint64_t pat = 0;
     pat |= (uint64_t)PAT_WB  << 0;
     pat |= (uint64_t)PAT_WT  << 8;  
