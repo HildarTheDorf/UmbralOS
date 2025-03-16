@@ -2,6 +2,7 @@
 -Wall
 -Wextra
 -Wpedantic
+-I.
 -nostdlib
 -ffreestanding
 -mno-sse

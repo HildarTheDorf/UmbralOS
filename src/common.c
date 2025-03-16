@@ -6,14 +6,14 @@
 
 #define NUM_BUF_LEN 20
 
+static f_kprint_write *g_writer;
+
 static void print_char(char c) {
-    serial_putc(c);
+    g_writer(&c, 1);
 }
 
 static void print_string(const char *str) {
-    for (const char *p = str; *p; ++p) {
-        print_char(*p);
-    }
+    g_writer(str, strlen(str));
 }
 
 static void print_unsigned(uint64_t value, uint8_t base) {
@@ -81,6 +81,10 @@ void halt_and_catch_fire(void) {
     halt();
 }
 
+void kprint_configure(f_kprint_write *writer) {
+    g_writer = writer;
+}
+
 [[gnu::format(printf, 1, 2)]]
 void kprint(const char *format, ...) {
     va_list va;
@@ -101,6 +105,13 @@ void kprintv(const char *format, va_list va) {
     }
 }
 
+void *memcpy(void *dest, const void *src, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        ((char *)dest)[i] = ((const char *)src)[i];
+    }
+    return dest;
+}
+
 void memset(void *s, int c, size_t n) {
     for (size_t i = 0; i < n; ++i) {
         ((char *)s)[i] = c;
@@ -109,6 +120,12 @@ void memset(void *s, int c, size_t n) {
 
 void memzero(void *s, size_t n) {
     memset(s, 0, n);
+}
+
+size_t strlen(const char *str) {
+    for (size_t i = 0;; ++i) {
+        if (!*str++) return i;
+    }
 }
 
 int strncmp(const char *s1, const char *s2, size_t n)

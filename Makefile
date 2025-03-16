@@ -8,10 +8,12 @@ QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --se
 
 ASM_SOURCES := gdt.s interrupt.s main.s
 C_SOURCES := acpi.c common.c gdt.c intel.c interrupt.c main.c mm.c security.c serial.c
+FLANTERM_SOURCES := flanterm.c backends/fb.c
 ASM_OBJECTS := $(patsubst %.s,build/%.s.o,$(ASM_SOURCES))
 C_OBJECTS := $(patsubst %.c,build/%.c.o,$(C_SOURCES))
+FLANTERM_OBJECTS := $(patsubst %.c,build/flanterm/%.c.o,$(FLANTERM_SOURCES))
 
-ALL_OBJECTS := $(ASM_OBJECTS) $(C_OBJECTS)
+ALL_OBJECTS := $(ASM_OBJECTS) $(C_OBJECTS) $(FLANTERM_OBJECTS)
 ESP_DIRECTORY := iso_root/EFI/boot
 LIMINE_DIRECTORY := iso_root/boot/limine
 LIMINE_FILES := $(LIMINE_DIRECTORY)/limine-bios-cd.bin $(LIMINE_DIRECTORY)/limine-bios.sys $(LIMINE_DIRECTORY)/limine-uefi-cd.bin $(ESP_DIRECTORY)/BOOTIA32.EFI $(ESP_DIRECTORY)/BOOTX64.EFI
@@ -21,7 +23,7 @@ LIMINE_FILES := $(LIMINE_DIRECTORY)/limine-bios-cd.bin $(LIMINE_DIRECTORY)/limin
 all: umbralos.iso
 
 clean:
-	rm -f build/*
+	rm -f $(ALL_OBJECTS)
 	rm -f iso_root/boot/limine.conf
 	rm -f iso_root/boot/umbralos.bin
 	rm -f umbralos.iso
@@ -42,6 +44,9 @@ build/%.s.o: src/%.s
 	$(CC) $(ASMFLAGS) -c $^ -o $@ 
 
 build/%.c.o: src/%.c
+	$(CC) $(CFLAGS) -c $^ -o $@ 
+
+build/flanterm/%.c.o: flanterm/%.c
 	$(CC) $(CFLAGS) -c $^ -o $@ 
 
 iso_root/boot/limine.conf: limine.conf.m4 iso_root/boot/umbralos.bin
