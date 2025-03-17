@@ -47,7 +47,7 @@ static const LIMINE_REQUESTS_END_MARKER
 
 static struct flanterm_context *flanterm_context;
 
-void do_flanterm_write(const char *buf, size_t count) {
+static void do_flanterm_write(const char *buf, size_t count) {
     flanterm_write(flanterm_context, buf, count);
 }
 
