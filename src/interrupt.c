@@ -665,6 +665,7 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         panic("Unhandled #PF(0x%lx)\n", cr2);
         break;
     case IDT_IDX_EXCEPTION_MF:
+        dump_interrupt_frame(stack_frame);
         panic("Unhandled #MF\n");
         break;
     case IDT_IDX_EXCEPTION_AC:
