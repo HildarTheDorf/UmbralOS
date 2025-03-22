@@ -383,6 +383,61 @@ static struct idt_entry IDT[IDT_IDX_MAX + 1] = {
 
 #undef I
 
+static const char *vector_to_menemonic(uint8_t vector) {
+    switch (vector) {
+    case IDT_IDX_EXCEPTION_DE:
+        return "#DE";
+    case IDT_IDX_EXCEPTION_DB:
+        return "#DB";
+    case IDT_IDX_EXCEPTION_NMI:
+        return "#NMI";
+    case IDT_IDX_EXCEPTION_BP:
+        return "#BP";
+    case IDT_IDX_EXCEPTION_OF:
+        return "#OF";
+    case IDT_IDX_EXCEPTION_BR:
+        return "#BR";
+    case IDT_IDX_EXCEPTION_UD:
+        return "#UD";
+    case IDT_IDX_EXCEPTION_NM:
+        return "#NM";
+    case IDT_IDX_EXCEPTION_DF:
+        return "#DF";
+    case IDT_IDX_EXCEPTION_CSO:
+        return "#CSO";
+    case IDT_IDX_EXCEPTION_TS:
+        return "#TS";
+    case IDT_IDX_EXCEPTION_NP:
+        return "#NP";
+    case IDT_IDX_EXCEPTION_SS:
+        return "#SS";
+    case IDT_IDX_EXCEPTION_GP:
+        return "#GP";
+    case IDT_IDX_EXCEPTION_PF:
+        return "#PF";
+    case IDT_IDX_EXCEPTION_MF:
+        return "#MF";
+    case IDT_IDX_EXCEPTION_AC:
+        return "#AC";
+    case IDT_IDX_EXCEPTION_MC:
+        return "#MC";
+    case IDT_IDX_EXCEPTION_XM:
+        return "#XM/#XF";
+    case IDT_IDX_EXCEPTION_VE:
+        return "#VE";
+    case IDT_IDX_EXCEPTION_CP:
+        return "#CP";
+    case IDT_IDX_EXCEPTION_HV:
+        return "#HV";
+    case IDT_IDX_EXCEPTION_VC:
+        return "#VC";
+    case IDT_IDX_EXCEPTION_SX:
+        return "#SX";
+    default:
+        return nullptr;
+    }
+}
+
 static void legacy_pic_init_and_disable(uint8_t master_offset, uint8_t slave_offset) {
     // ICW1: Begin INIT sequence, including ICW4
     outb(PIC1_COMMAND, PIC_ICW1_INIT | PIC_ICW1_ICW4);
@@ -601,105 +656,15 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     enforce_smap();
 
     switch (vector) {
-    case IDT_IDX_EXCEPTION_DE:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #DE\n");
-        break;
-    case IDT_IDX_EXCEPTION_DB:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #DB\n");
-        break;
-    case IDT_IDX_EXCEPTION_NMI:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled NMI\n");
-        break;
     case IDT_IDX_EXCEPTION_BP:
-        kprint("#BP recieved\n");
         dump_interrupt_frame(stack_frame);
-        kprint("Resuming after #BP\n");
-        break;
-    case IDT_IDX_EXCEPTION_OF:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #OF\n");
-        break;
-    case IDT_IDX_EXCEPTION_BR:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #BR\n");
-        break;
-    case IDT_IDX_EXCEPTION_UD:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #UD\n");
-        break;
-    case IDT_IDX_EXCEPTION_NM:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #NM\n");
-        break;
-    case IDT_IDX_EXCEPTION_DF:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #DF\n");
-        break;
-    case IDT_IDX_EXCEPTION_CSO:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled CSO\n");
-        break;
-    case IDT_IDX_EXCEPTION_TS:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #TS\n");
-        break;
-    case IDT_IDX_EXCEPTION_NP:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #NP\n");
-        break;
-    case IDT_IDX_EXCEPTION_SS:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #SS\n");
-        break;
-    case IDT_IDX_EXCEPTION_GP:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #GP\n");
+        kprint("Continuing after #BP...\n");
         break;
     case IDT_IDX_EXCEPTION_PF:
-        uint64_t cr2;
-        __asm volatile("mov %%cr2,%0" : "=r"(cr2));
+        uintptr_t cr2;
+        __asm("mov %%cr2,%0" : "=r"(cr2));
         dump_interrupt_frame(stack_frame);
-        panic("Unhandled #PF(0x%lx)\n", cr2);
-        break;
-    case IDT_IDX_EXCEPTION_MF:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #MF\n");
-        break;
-    case IDT_IDX_EXCEPTION_AC:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #AC\n");
-        break;
-    case IDT_IDX_EXCEPTION_MC:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #MC\n");
-        break;
-    case IDT_IDX_EXCEPTION_XM:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #XM/XF\n");
-        break;
-    case IDT_IDX_EXCEPTION_VE:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #VE\n");
-        break;
-    case IDT_IDX_EXCEPTION_CP:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #CP\n");
-        break;
-    case IDT_IDX_EXCEPTION_HV:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #HV\n");
-        break;
-    case IDT_IDX_EXCEPTION_VC:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #VC\n");
-        break;
-    case IDT_IDX_EXCEPTION_SX:
-        dump_interrupt_frame(stack_frame);
-        panic("Unhandled #SX\n");
-        break;
+        panic("Unhandled #PF at 0x%lx", cr2);
     case IDT_IDX_LEGACY_PIC_MASTER_BASE + 0:
     case IDT_IDX_LEGACY_PIC_MASTER_BASE + 1:
     case IDT_IDX_LEGACY_PIC_MASTER_BASE + 2:
@@ -730,7 +695,14 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         break;          
     default:
         dump_interrupt_frame(stack_frame);
-        panic("Unhandled Interrupt 0x%x\n", vector);
+        const char *mnemonic = vector_to_menemonic(vector);
+        if (mnemonic) {
+            panic("Unhandled Exception %s", mnemonic);
+        } else if (vector < 32) {
+            panic("Unhandled Exception %d", vector);
+        } else {
+            panic("Unhandled Interrupt %d", vector);
+        }
     }
 }
 
