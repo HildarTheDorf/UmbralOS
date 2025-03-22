@@ -53,15 +53,24 @@ static void do_flanterm_write(const char *buf, size_t count) {
     flanterm_write(flanterm_context, buf, count);
 }
 
-static void x87_init(void) {
+static void fp_init(void) {
     uint64_t cr0;
     __asm volatile("mov %%cr0,%0" : "=r"(cr0));
     // x87 settings
-    // Set EM = 0, MP = 1 as per SDM Table 11-3
+    // Set EM = 0, MP = 1 as per SDM Table 11-3, and to enable SSE
     // Set NE = 1 to use native handling of x87 errors
-    cr0 |= CR0_NE | CR0_MP;
+    // Set TS = 1 to enable lazy saving of the x87/SSE state
     cr0 &= ~CR0_EM;
+    cr0 |= CR0_NE | CR0_TS | CR0_MP;
     __asm("mov %0,%%cr0" : : "r"(cr0));
+
+    uint64_t cr4;
+    __asm volatile("mov %%cr4,%0" : "=r"(cr4));
+    // OSFXSR: Enable (most) SSE/2/3/4 instructions
+    //         Ensure FXSAVE/FXRSTOR save XMM state
+    // OSXMMEXCEPT: Enable #XM exceptions (instead of #UD)
+    cr4 |= CR4_OSXMMEXCPT | CR4_OSFXSR;
+    __asm("mov %0,%%cr4" : : "r"(cr4));
 }
 
 [[noreturn]]
@@ -72,7 +81,7 @@ void main(void *stack_origin) {
 
     load_gdt();
     load_idt();
-    x87_init();
+    fp_init();
 
     pmm_init(limine_memmap_request.response, (void *)limine_hhdm_request.response->offset);
     vmm_init(limine_memmap_request.response, limine_kernel_address_request.response);
