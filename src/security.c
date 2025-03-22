@@ -2,10 +2,6 @@
 
 #include "intel.h"
 
-#define CR4_SMAP (1 << 21)
-#define CR4_SMEP (1 << 20)
-#define CR4_UMIP (1 << 11)
-
 static bool HAS_SMAP;
 
 void enforce_smap(void) {

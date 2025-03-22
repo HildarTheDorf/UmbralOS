@@ -60,6 +60,13 @@
 #define CPUID_7_0_EBX_SMEP (1 << 7)
 #define CPUID_7_0_ECX_UMIP (1 << 2)
 
+#define CR0_NE (1 << 5)
+#define CR0_EM (1 << 2)
+#define CR0_MP (1 << 1)
+#define CR4_SMAP (1 << 21)
+#define CR4_SMEP (1 << 20)
+#define CR4_UMIP (1 << 11)
+
 #define MSR_IA32_APIC_BASE 0x1B
 #define MSR_IA32_APIC_BASE_BSP 1 << 8
 #define MSR_IA32_APIC_BASE_EXTD 1 << 10
