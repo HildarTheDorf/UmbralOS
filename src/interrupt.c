@@ -51,7 +51,7 @@
 
 #define IOAPIC_REDIR_TBL_POLARITY (1 << 13)
 #define IOAPIC_REDIR_TBL_TRIGGER (1 << 15)
-#define IOAPIC_REDIR_TBL_MASK (1 << 16)
+#define IOAPIC_REDIR_TBL_MASKED (1 << 16)
 
 #define IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector) (vector)
 #define IOAPIC_REDIR_TBL_DELIVERY_NMI (0b100 << 8)
@@ -557,17 +557,8 @@ static void ioapic_write64(uint8_t reg, uint64_t value) {
     ioapic_write32(reg + 1, value >> 32);
 }
 
-static void ioapic_enable_isa_interrupt(uint8_t vector) {
-    const uint8_t i = vector - IDT_IDX_ISA_BASE;
-
-    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector);
-    if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
-        value |= IOAPIC_REDIR_TBL_POLARITY;
-    }
-    if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
-        value |= IOAPIC_REDIR_TBL_TRIGGER;
-    }
-    ioapic_write64(IOAPIC_REDIR_TBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+static void ioapic_disable_interrupt(uint8_t vector) {
+    ioapic_write64(IOAPIC_REDIR_TBL(vector), IOAPIC_REDIR_TBL_MASKED);
 }
 
 static void ioapic_enable_nmi_interrupt() {
@@ -581,13 +572,26 @@ static void ioapic_enable_nmi_interrupt() {
     ioapic_write64(IOAPIC_REDIR_TBL(IOAPIC_NMI_REDIRECTION.destination), value);
 }
 
+static void ioapic_enable_isa_interrupt(uint8_t vector) {
+    const uint8_t i = vector - IDT_IDX_ISA_BASE;
+
+    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector);
+    if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
+        value |= IOAPIC_REDIR_TBL_POLARITY;
+    }
+    if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
+        value |= IOAPIC_REDIR_TBL_TRIGGER;
+    }
+    ioapic_write64(IOAPIC_REDIR_TBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+}
+
 static void ioapic_init() {
     const uint32_t ioapicver = ioapic_read32(IOAPICVER);
     const uint8_t num_ioapic_entries = (ioapicver >> IOAPICVER_MAXENTRY_SHIFT) & 0xFF;
     if (num_ioapic_entries < 16) panic("I/O APIC has too few pins to cover all ISA IRQs");
 
     for (uint8_t i = 0; i < num_ioapic_entries; ++i) {
-        ioapic_write64(IOAPIC_REDIR_TBL(i), IOAPIC_REDIR_TBL_MASK);
+        ioapic_disable_interrupt(i);
     }
 
     if (IOAPIC_NMI_REDIRECTION.is_valid) {
