@@ -367,6 +367,7 @@ static struct {
     uint8_t lint;
     bool is_level_triggered;
     bool is_active_low;
+    bool is_valid;
 } LAPIC_NMI_REDIRECTION;
 
 static struct {
@@ -635,7 +636,7 @@ static void parse_madt(void) {
             ISA_REDIRECTION_ENTRY[madt_override->irq_source].is_level_triggered = trigger == 0x3;
             break;
         }
-        case 3:
+        case 3: {
             const struct MADTNMISource *madt_nmisource = (const void *)madt_entry;
             const uint8_t polarity = (madt_nmisource->flags >> 0) & 0x3;
             const uint8_t trigger = (madt_nmisource->flags >> 2) & 0x3;
@@ -645,9 +646,10 @@ static void parse_madt(void) {
             IOAPIC_NMI_REDIRECTION.is_level_triggered = trigger == 0x3;
             IOAPIC_NMI_REDIRECTION.is_valid = true;
             break;
+        }
         case 4: {
             const struct MADTLocalAPICNMI *madt_localapicnmi = (const void *)madt_entry;
-            if (madt_localapicnmi->processor_id == 0 || madt_localapicnmi->processor_id != 0xFF) {
+            if (madt_localapicnmi->processor_id == 0 || madt_localapicnmi->processor_id == 0xFF) {
                 // BSP or ALL_CPUS
                 const uint8_t polarity = (madt_localapicnmi->flags >> 0) & 0x3;
                 const uint8_t trigger = (madt_localapicnmi->flags >> 2) & 0x3;
@@ -655,12 +657,17 @@ static void parse_madt(void) {
                 LAPIC_NMI_REDIRECTION.lint = madt_localapicnmi->lint;
                 LAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
                 LAPIC_NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+                LAPIC_NMI_REDIRECTION.is_valid = true;
             }
             break;
         }
         default:
             panic("Unknown MADT struct %u", madt_entry->type);
         }
+    }
+
+    if (!LAPIC_NMI_REDIRECTION.is_valid) {
+        panic("No Local APIC NMI in MADT, can not configure lapic");
     }
 }
 
