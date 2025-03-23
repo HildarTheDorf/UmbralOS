@@ -22,6 +22,7 @@ void serial_init(void) {
 
 void serial_write(const char *buf, size_t size) {
     for (size_t i = 0; i < size; ++i) {
+        if (buf[i] == '\n') serial_putc('\r');
         serial_putc(buf[i]);
     }
 }
