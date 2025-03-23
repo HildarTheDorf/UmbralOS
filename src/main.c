@@ -81,13 +81,9 @@ void main(void *stack_origin) {
 
     load_gdt();
     load_idt();
-    fp_init();
 
     pmm_init(limine_memmap_request.response, (void *)limine_hhdm_request.response->offset);
     vmm_init(limine_memmap_request.response, limine_kernel_address_request.response);
-
-    acpi_parse_rsdp(phy_to_virt((phy_t)limine_rsdp_request.response->address));
-    configure_interrupts();
 
     if (limine_framebuffer_request.response->framebuffer_count > 0) {
         const struct limine_framebuffer *fb = limine_framebuffer_request.response->framebuffers[0];
@@ -109,10 +105,15 @@ void main(void *stack_origin) {
         kprint_configure(do_flanterm_write);
     }
 
+    acpi_parse_rsdp(phy_to_virt((phy_t)limine_rsdp_request.response->address));
+    configure_interrupts();
+
     pmm_reclaim(limine_memmap_request.response, stack_origin, DEFAULT_STACK_SIZE);
 #ifdef DEBUG_CHECKS
     pmm_zero();
 #endif
+
+    fp_init();
 
     __asm("int $3");
     kprint("Boot Complete!\n");
