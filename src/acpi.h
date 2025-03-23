@@ -49,6 +49,12 @@ struct [[gnu::packed]] MADTInterruptSourceOverride {
     uint16_t flags;
 };
 
+struct [[gnu::packed]] MADTNMISource {
+    struct MADTEntryHeader h;
+    uint16_t flags;
+    uint32_t global_system_interrupt;
+};
+
 struct [[gnu::packed]] MADTLocalAPICNMI {
     struct MADTEntryHeader h;
     uint8_t processor_id;

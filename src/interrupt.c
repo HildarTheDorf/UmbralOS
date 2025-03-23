@@ -53,6 +53,9 @@
 #define IOAPICREDTBL_TRIGGER (1 << 15)
 #define IOAPICREDTBL_MASK (1 << 16)
 
+#define IOAPICREDTBL_DELIVERY_FIXED(vector) (vector)
+#define IOAPICREDTBL_DELIVERY_NMI (0b100 << 8)
+
 #define FOR_EACH_INTERRUPT \
     I(0) \
     I(1) \
@@ -363,8 +366,15 @@ static struct redirection_entry ISA_REDIRECTION_ENTRY[16] = {
 static struct {
     uint8_t lint;
     bool is_level_triggered;
-    bool is_active_low;    
-} NMI_REDIRECTION;
+    bool is_active_low;
+} LAPIC_NMI_REDIRECTION;
+
+static struct {
+    uint16_t destination;
+    bool is_level_triggered;
+    bool is_active_low;
+    bool is_valid;
+} IOAPIC_NMI_REDIRECTION;
 
 #define I(X) extern void interrupt_stub_##X(void);
 FOR_EACH_INTERRUPT
@@ -512,7 +522,7 @@ static void lapic_init(void) {
     lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_THERM, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_PERFC, LAPIC_LVT_MASK);
-    if (NMI_REDIRECTION.lint == 0) {
+    if (LAPIC_NMI_REDIRECTION.lint == 0) {
         lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_NMI);
         lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_EXTINT);
     } else {
@@ -548,7 +558,7 @@ static void ioapic_write64(uint8_t reg, uint64_t value) {
 static void ioapic_enable_isa_interrupt(uint8_t vector) {
     const uint8_t i = vector - IDT_IDX_ISA_BASE;
 
-    uint32_t value = vector;
+    uint32_t value = IOAPICREDTBL_DELIVERY_FIXED(vector);
     if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
         value |= IOAPICREDTBL_POLARITY;
     }
@@ -556,6 +566,17 @@ static void ioapic_enable_isa_interrupt(uint8_t vector) {
         value |= IOAPICREDTBL_TRIGGER;
     }
     ioapic_write64(IOAPICREDTBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+}
+
+static void ioapic_enable_nmi_interrupt() {
+    uint32_t value = IOAPICREDTBL_DELIVERY_NMI;
+    if (IOAPIC_NMI_REDIRECTION.is_active_low) {
+        value |= IOAPICREDTBL_POLARITY;
+    }
+    if (IOAPIC_NMI_REDIRECTION.is_level_triggered) {
+        value |= IOAPICREDTBL_TRIGGER;
+    }
+    ioapic_write64(IOAPICREDTBL(IOAPIC_NMI_REDIRECTION.destination), value);
 }
 
 static void ioapic_init() {
@@ -567,6 +588,9 @@ static void ioapic_init() {
         ioapic_write64(IOAPICREDTBL(i), IOAPICREDTBL_MASK);
     }
 
+    if (IOAPIC_NMI_REDIRECTION.is_valid) {
+        ioapic_enable_nmi_interrupt();
+    }
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
 }
 
@@ -605,16 +629,26 @@ static void parse_madt(void) {
             ISA_REDIRECTION_ENTRY[madt_override->irq_source].is_level_triggered = trigger == 0x3;
             break;
         }
-        case 4: {
-            const struct MADTLocalAPICNMI *madt_nmi = (const void *)madt_entry;
-            if (madt_nmi->processor_id == 0 || madt_nmi->processor_id != 0xFF) {
-                // BSP or ALL_CPUS
-                const uint8_t polarity = (madt_nmi->flags >> 0) & 0x3;
-                const uint8_t trigger = (madt_nmi->flags >> 2) & 0x3;
+        case 3:
+            const struct MADTNMISource *madt_nmisource = (const void *)madt_entry;
+            const uint8_t polarity = (madt_nmisource->flags >> 0) & 0x3;
+            const uint8_t trigger = (madt_nmisource->flags >> 2) & 0x3;
 
-                NMI_REDIRECTION.lint = madt_nmi->lint;
-                NMI_REDIRECTION.is_active_low = polarity == 0x3;
-                NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+            IOAPIC_NMI_REDIRECTION.destination = madt_nmisource->global_system_interrupt;
+            IOAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
+            IOAPIC_NMI_REDIRECTION.is_level_triggered = trigger == 0x3;
+            IOAPIC_NMI_REDIRECTION.is_valid = true;
+            break;
+        case 4: {
+            const struct MADTLocalAPICNMI *madt_localapicnmi = (const void *)madt_entry;
+            if (madt_localapicnmi->processor_id == 0 || madt_localapicnmi->processor_id != 0xFF) {
+                // BSP or ALL_CPUS
+                const uint8_t polarity = (madt_localapicnmi->flags >> 0) & 0x3;
+                const uint8_t trigger = (madt_localapicnmi->flags >> 2) & 0x3;
+
+                LAPIC_NMI_REDIRECTION.lint = madt_localapicnmi->lint;
+                LAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
+                LAPIC_NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
             }
             break;
         }
