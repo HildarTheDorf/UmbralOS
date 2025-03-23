@@ -534,6 +534,7 @@ static void lapic_init(void) {
 }
 
 static uint32_t ioapic_read32(uint8_t reg) {
+    // IOAPIC registers are 16-byte aligned but should be accessed using 32-bit ops
     *(volatile uint32_t *)IOAPIC_BASE = reg;
     return *(volatile uint32_t *)((uintptr_t)IOAPIC_BASE + 0x10);
 }
@@ -546,6 +547,7 @@ static uint64_t ioapic_read64(uint8_t reg) {
 }
 
 static void ioapic_write32(uint8_t reg, uint32_t value) {
+    // IOAPIC registers are 16-byte aligned but should be accessed using 32-bit ops
     *(volatile uint32_t *)IOAPIC_BASE = reg;
     *(volatile uint32_t *)((uintptr_t)IOAPIC_BASE + 0x10) = value;
 }
