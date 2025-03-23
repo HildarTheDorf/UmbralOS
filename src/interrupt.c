@@ -601,8 +601,8 @@ static void parse_madt(void) {
             const uint8_t trigger = (madt_override->flags >> 2) & 0x3;
 
             ISA_REDIRECTION_ENTRY[madt_override->irq_source].destination = madt_override->global_system_interrupt;
-            ISA_REDIRECTION_ENTRY[madt_override->global_system_interrupt].is_active_low = polarity == 0x3;
-            ISA_REDIRECTION_ENTRY[madt_override->global_system_interrupt].is_level_triggered = trigger == 0x3;
+            ISA_REDIRECTION_ENTRY[madt_override->irq_source].is_active_low = polarity == 0x3;
+            ISA_REDIRECTION_ENTRY[madt_override->irq_source].is_level_triggered = trigger == 0x3;
             break;
         }
         case 4: {
