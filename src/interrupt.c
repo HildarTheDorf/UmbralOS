@@ -45,16 +45,16 @@
 #define LAPIC_SPIV_ENABLE 0x100
 
 #define IOAPICVER 0x01
-#define IOAPICREDTBL(n) (0x10 + 2 * n)
+#define IOAPIC_REDIR_TBL(n) (0x10 + 2 * n)
 
 #define IOAPICVER_MAXENTRY_SHIFT 16
 
-#define IOAPICREDTBL_POLARITY (1 << 13)
-#define IOAPICREDTBL_TRIGGER (1 << 15)
-#define IOAPICREDTBL_MASK (1 << 16)
+#define IOAPIC_REDIR_TBL_POLARITY (1 << 13)
+#define IOAPIC_REDIR_TBL_TRIGGER (1 << 15)
+#define IOAPIC_REDIR_TBL_MASK (1 << 16)
 
-#define IOAPICREDTBL_DELIVERY_FIXED(vector) (vector)
-#define IOAPICREDTBL_DELIVERY_NMI (0b100 << 8)
+#define IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector) (vector)
+#define IOAPIC_REDIR_TBL_DELIVERY_NMI (0b100 << 8)
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -558,25 +558,25 @@ static void ioapic_write64(uint8_t reg, uint64_t value) {
 static void ioapic_enable_isa_interrupt(uint8_t vector) {
     const uint8_t i = vector - IDT_IDX_ISA_BASE;
 
-    uint32_t value = IOAPICREDTBL_DELIVERY_FIXED(vector);
+    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector);
     if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
-        value |= IOAPICREDTBL_POLARITY;
+        value |= IOAPIC_REDIR_TBL_POLARITY;
     }
     if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
-        value |= IOAPICREDTBL_TRIGGER;
+        value |= IOAPIC_REDIR_TBL_TRIGGER;
     }
-    ioapic_write64(IOAPICREDTBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+    ioapic_write64(IOAPIC_REDIR_TBL(ISA_REDIRECTION_ENTRY[i].destination), value);
 }
 
 static void ioapic_enable_nmi_interrupt() {
-    uint32_t value = IOAPICREDTBL_DELIVERY_NMI;
+    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_NMI;
     if (IOAPIC_NMI_REDIRECTION.is_active_low) {
-        value |= IOAPICREDTBL_POLARITY;
+        value |= IOAPIC_REDIR_TBL_POLARITY;
     }
     if (IOAPIC_NMI_REDIRECTION.is_level_triggered) {
-        value |= IOAPICREDTBL_TRIGGER;
+        value |= IOAPIC_REDIR_TBL_TRIGGER;
     }
-    ioapic_write64(IOAPICREDTBL(IOAPIC_NMI_REDIRECTION.destination), value);
+    ioapic_write64(IOAPIC_REDIR_TBL(IOAPIC_NMI_REDIRECTION.destination), value);
 }
 
 static void ioapic_init() {
@@ -585,7 +585,7 @@ static void ioapic_init() {
     if (num_ioapic_entries < 16) panic("I/O APIC has too few pins to cover all ISA IRQs");
 
     for (uint8_t i = 0; i < num_ioapic_entries; ++i) {
-        ioapic_write64(IOAPICREDTBL(i), IOAPICREDTBL_MASK);
+        ioapic_write64(IOAPIC_REDIR_TBL(i), IOAPIC_REDIR_TBL_MASK);
     }
 
     if (IOAPIC_NMI_REDIRECTION.is_valid) {
