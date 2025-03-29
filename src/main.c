@@ -78,6 +78,7 @@ void main(void *stack_origin) {
     security_init();
     serial_init();
     kprint_configure(serial_write);
+    kprint("Kernel Base: 0x%lx\n", limine_kernel_address_request.response->virtual_base);
 
     load_gdt();
     load_idt();
