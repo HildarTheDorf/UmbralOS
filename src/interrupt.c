@@ -45,7 +45,7 @@
 #define LAPIC_SPIV_ENABLE 0x100
 
 #define IOAPICVER 0x01
-#define IOAPIC_REDIR_TBL(n) (0x10 + 2 * n)
+#define IOAPIC_REDIR_TBL_ADDR(n) (0x10 + 2 * n)
 
 #define IOAPICVER_MAXENTRY_SHIFT 16
 
@@ -559,7 +559,7 @@ static void ioapic_write64(uint8_t reg, uint64_t value) {
 }
 
 static void ioapic_disable_interrupt(uint8_t vector) {
-    ioapic_write64(IOAPIC_REDIR_TBL(vector), IOAPIC_REDIR_TBL_MASKED);
+    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(vector), IOAPIC_REDIR_TBL_MASKED);
 }
 
 static void ioapic_enable_nmi_interrupt() {
@@ -570,7 +570,7 @@ static void ioapic_enable_nmi_interrupt() {
     if (IOAPIC_NMI_REDIRECTION.is_level_triggered) {
         value |= IOAPIC_REDIR_TBL_TRIGGER;
     }
-    ioapic_write64(IOAPIC_REDIR_TBL(IOAPIC_NMI_REDIRECTION.destination), value);
+    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(IOAPIC_NMI_REDIRECTION.destination), value);
 }
 
 static void ioapic_enable_isa_interrupt(uint8_t vector) {
@@ -583,7 +583,7 @@ static void ioapic_enable_isa_interrupt(uint8_t vector) {
     if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
         value |= IOAPIC_REDIR_TBL_TRIGGER;
     }
-    ioapic_write64(IOAPIC_REDIR_TBL(ISA_REDIRECTION_ENTRY[i].destination), value);
+    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(ISA_REDIRECTION_ENTRY[i].destination), value);
 }
 
 static void ioapic_init() {
