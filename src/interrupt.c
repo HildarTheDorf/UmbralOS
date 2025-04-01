@@ -598,7 +598,10 @@ static void ioapic_init() {
     if (IOAPIC_NMI_REDIRECTION.is_valid) {
         ioapic_enable_nmi_interrupt();
     }
+    ioapic_enable_isa_interrupt(IDT_IDX_ISA_PIT);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
+    ioapic_enable_isa_interrupt(IDT_IDX_ISA_COM1);
+    ioapic_enable_isa_interrupt(IDT_IDX_ISA_MOUSE);
 }
 
 static void parse_madt(void) {
@@ -732,8 +735,19 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
         break;
+    case IDT_IDX_ISA_PIT:
+        lapic_eoi();
+        break;
     case IDT_IDX_ISA_KB:
-        kprint("Ignoring Interrupt from KB\n");
+        kprint("Got Interrupt from PS/2 KB (0x%u)\n", inb(0x60));
+        lapic_eoi();
+        break;
+    case IDT_IDX_ISA_COM1:
+        kprint("Got Interrupt from COM1\n");
+        lapic_eoi();
+        break;
+    case IDT_IDX_ISA_MOUSE:
+        kprint("Got Interrupt from PS/2 Mouse (0x%u)\n", inb(0x60));
         lapic_eoi();
         break;
     case IDT_IDX_LAPIC_SPURIOUS:
@@ -746,9 +760,9 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         if (mnemonic) {
             panic("Unhandled Exception %s", mnemonic);
         } else if (vector < 32) {
-            panic("Unhandled Exception %d", vector);
+            panic("Unhandled Exception %u", vector);
         } else {
-            panic("Unhandled Interrupt %d", vector);
+            panic("Unhandled Interrupt %u", vector);
         }
     }
 }
