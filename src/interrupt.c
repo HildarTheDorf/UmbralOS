@@ -760,9 +760,9 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         if (mnemonic) {
             panic("Unhandled Exception %s", mnemonic);
         } else if (vector < 32) {
-            panic("Unhandled Exception %u", vector);
+            panic("Unhandled Exception 0x%x", vector);
         } else {
-            panic("Unhandled Interrupt %u", vector);
+            panic("Unhandled Interrupt 0x%x", vector);
         }
     }
 }
