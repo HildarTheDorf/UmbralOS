@@ -598,7 +598,6 @@ static void ioapic_init() {
     if (IOAPIC_NMI_REDIRECTION.is_valid) {
         ioapic_enable_nmi_interrupt();
     }
-    ioapic_enable_isa_interrupt(IDT_IDX_ISA_PIT);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_COM1);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_MOUSE);
@@ -734,9 +733,6 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 6:
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
-        break;
-    case IDT_IDX_ISA_PIT:
-        lapic_eoi();
         break;
     case IDT_IDX_ISA_KB:
         kprint("Got Interrupt from PS/2 KB (0x%u)\n", inb(0x60));
