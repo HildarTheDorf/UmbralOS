@@ -3,6 +3,7 @@
 #include "common.h"
 #include "mm.h"
 #include "security.h"
+#include "serial.h"
 
 #include <stdint.h>
 
@@ -739,7 +740,12 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         lapic_eoi();
         break;
     case IDT_IDX_ISA_COM1:
-        kprint("Got Interrupt from COM1\n");
+        const char c = serial_read();
+        if (c == '\r') {
+            kprint("\n");
+        } else {
+            kprint("%c", c);
+        }
         lapic_eoi();
         break;
     case IDT_IDX_ISA_MOUSE:
