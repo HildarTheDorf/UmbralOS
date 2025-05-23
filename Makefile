@@ -45,10 +45,6 @@ run-kvm: umbralos.iso
 run-uefi: umbralos.iso OVMF_VARS.fd
 	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -drive if=pflash,file=/usr/share/OVMF/OVMF_CODE_4M.fd,format=raw,readonly=on,unit=0 -drive if=pflash,file=OVMF_VARS.fd,format=raw,unit=1 -cdrom $<
 
-isodir:
-	mkdir -p iso_root/boot/limine
-	mkdir -p iso_root/EFI/boot
-
 OVMF_VARS.fd:
 	cp /usr/share/OVMF/OVMF_VARS_4M.fd OVMF_VARS.fd
 
