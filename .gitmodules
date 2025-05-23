@@ -1,3 +1,4 @@
 [submodule "flanterm"]
 	path = flanterm
-	url = git@github.com:mintsuki/flanterm.git
+	url = https://codeberg.org/mintsuki/flanterm.git
+	branch = trunk
