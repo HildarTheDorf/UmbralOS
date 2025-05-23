@@ -23,7 +23,7 @@ BOOT_FILES := $(ESP_BINARIES:%=$(ESP_DIR)/%) $(LIMINE_BINARIES:%=$(LIMINE_BOOT_D
 
 OVMF_DIR := /usr/share/OVMF
 
-.PHONY: all clean clean-nvs run run-bochs run-kvm run-uefi
+.PHONY: all clean clean-deps clean-nvs run run-bochs run-kvm run-uefi
 
 all: umbralos.iso
 
@@ -31,6 +31,9 @@ clean:
 	rm -rf build
 	rm -rf iso_root
 	rm -f umbralos.iso
+
+clean-deps:
+	${MAKE} ${MFLAGS} -C limine clean
 
 clean-nvs:
 	rm -f OVMF_VARS.fd
@@ -77,11 +80,15 @@ iso_root/boot/umbralos.bin: linker.ld $(ALL_OBJECTS)
 	@mkdir -p $(@D)
 	$(LD) $(LDFLAGS) -T linker.ld $(ALL_OBJECTS) -o $@
 
-umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(BOOT_FILES)
+limine/limine:
+	${MAKE} ${MFLAGS} -C limine
+
+
+umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(BOOT_FILES) limine/limine
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
 		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
 		-efi-boot-part --efi-boot-image --protective-msdos-label \
 		-V UMBRALOS -m .gitkeep iso_root -quiet \
 		-o $@
-	limine bios-install --quiet $@
+	limine/limine bios-install --quiet $@
