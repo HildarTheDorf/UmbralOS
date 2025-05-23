@@ -21,15 +21,13 @@ ESP_BINARIES := BOOTIA32.EFI BOOTX64.EFI
 LIMINE_BINARIES := limine-bios-cd.bin limine-bios.sys limine-uefi-cd.bin
 BOOT_FILES := $(ESP_BINARIES:%=$(ESP_DIR)/%) $(LIMINE_BINARIES:%=$(LIMINE_BOOT_DIR)/%)
 
-.PHONY: all clean run run-bochs run-kvm run-uefi
+.PHONY: all builddir clean isodir run run-bochs run-kvm run-uefi
 
 all: umbralos.iso
 
 clean:
-	rm -f $(ALL_OBJECTS)
-	rm -f $(BOOT_FILES)
-	rm -f iso_root/boot/limine.conf
-	rm -f iso_root/boot/umbralos.bin
+	rm -rf build
+	rm -rf iso_root
 	rm -f umbralos.iso
 
 run: umbralos.iso
@@ -44,26 +42,33 @@ run-kvm: umbralos.iso
 run-uefi: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -bios /usr/share/ovmf/OVMF.fd -cdrom $<
 
-build/%.s.o: src/%.s
-	$(CC) $(ASMFLAGS) -c $^ -o $@ 
+builddir:
+	mkdir -p build/flanterm/backends
 
-build/%.c.o: src/%.c
-	$(CC) $(CFLAGS) -c $^ -o $@ 
+isodir:
+	mkdir -p iso_root/boot/limine
+	mkdir -p iso_root/EFI/boot
 
-build/flanterm/%.c.o: flanterm/%.c
-	$(CC) $(CFLAGS) -c $^ -o $@ 
+build/%.s.o: src/%.s builddir
+	$(CC) $(ASMFLAGS) -c $< -o $@ 
 
-iso_root/EFI/boot/% : /usr/local/share/limine/%
+build/%.c.o: src/%.c builddir
+	$(CC) $(CFLAGS) -c $< -o $@ 
+
+build/flanterm/%.c.o: flanterm/%.c builddir
+	$(CC) $(CFLAGS) -c $< -o $@ 
+
+iso_root/EFI/boot/% : /usr/local/share/limine/% isodir
 	cp $< $@
 
-iso_root/boot/limine/% : /usr/local/share/limine/%
+iso_root/boot/limine/% : /usr/local/share/limine/% isodir
 	cp $< $@
 
-iso_root/boot/limine.conf: limine.conf.m4 iso_root/boot/umbralos.bin
+iso_root/boot/limine.conf: limine.conf.m4 iso_root/boot/umbralos.bin isodir
 	$(M4) $< > $@
 
-iso_root/boot/umbralos.bin: linker.ld $(ALL_OBJECTS)
-	$(LD) $(LDFLAGS) -T $^ -o $@
+iso_root/boot/umbralos.bin: linker.ld $(ALL_OBJECTS) isodir
+	$(LD) $(LDFLAGS) -T linker.ld $(ALL_OBJECTS) -o $@
 
 umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(BOOT_FILES)
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
