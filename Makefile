@@ -53,9 +53,6 @@ run-uefi: umbralos.iso OVMF_VARS.fd
 		-drive if=pflash,file=OVMF_VARS.fd,format=raw,unit=1 \
 		-cpu host --enable-kvm -cdrom $<
 
-OVMF_VARS.fd:
-	cp $(OVMF_DIR)/OVMF_VARS_4M.fd OVMF_VARS.fd
-
 build/%.s.o: src/%.s
 	@mkdir -p $(@D)
 	$(CC) $(ASMFLAGS) -c $< -o $@ 
@@ -83,6 +80,8 @@ iso_root/boot/umbralos.bin: linker.ld $(ALL_OBJECTS)
 limine/limine:
 	${MAKE} ${MFLAGS} -C limine
 
+OVMF_VARS.fd:
+	cp $(OVMF_DIR)/OVMF_VARS_4M.fd OVMF_VARS.fd
 
 umbralos.iso: iso_root/boot/umbralos.bin iso_root/boot/limine.conf $(BOOT_FILES) limine/limine
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
