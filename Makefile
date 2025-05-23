@@ -21,7 +21,7 @@ ESP_BINARIES := BOOTIA32.EFI BOOTX64.EFI
 LIMINE_BINARIES := limine-bios-cd.bin limine-bios.sys limine-uefi-cd.bin
 BOOT_FILES := $(ESP_BINARIES:%=$(ESP_DIR)/%) $(LIMINE_BINARIES:%=$(LIMINE_BOOT_DIR)/%)
 
-.PHONY: all builddir clean isodir run run-bochs run-kvm run-uefi
+.PHONY: all builddir clean clean-nvs isodir run run-bochs run-kvm run-uefi
 
 all: umbralos.iso
 
@@ -29,6 +29,9 @@ clean:
 	rm -rf build
 	rm -rf iso_root
 	rm -f umbralos.iso
+
+clean-nvs:
+	rm -f OVMF_VARS.fd
 
 run: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu qemu64,x2apic,smap,smep,umip -cdrom $<
@@ -39,8 +42,8 @@ run-bochs: umbralos.iso
 run-kvm: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -cdrom $<
 
-run-uefi: umbralos.iso
-	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -bios /usr/share/ovmf/OVMF.fd -cdrom $<
+run-uefi: umbralos.iso OVMF_VARS.fd
+	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -drive if=pflash,file=/usr/share/ovmf/OVMF.fd,format=raw,readonly=on,unit=0 -drive if=pflash,file=OVMF_VARS.fd,format=raw,unit=1 -cdrom $<
 
 builddir:
 	mkdir -p build/flanterm/backends
@@ -48,6 +51,9 @@ builddir:
 isodir:
 	mkdir -p iso_root/boot/limine
 	mkdir -p iso_root/EFI/boot
+
+OVMF_VARS.fd:
+	fallocate -l 0x1000 $@
 
 build/%.s.o: src/%.s builddir
 	$(CC) $(ASMFLAGS) -c $< -o $@ 

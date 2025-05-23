@@ -2,3 +2,4 @@ build/*
 iso_root/*
 *.log
 umbralos.iso
+OVMF_VARS.fd
