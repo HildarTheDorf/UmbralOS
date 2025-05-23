@@ -1,5 +1,5 @@
 [submodule "flanterm"]
-	path = flanterm
+	path = src/flanterm
 	url = https://codeberg.org/mintsuki/flanterm.git
 	branch = trunk
 [submodule "limine"]

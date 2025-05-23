@@ -61,10 +61,6 @@ build/%.c.o: src/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
-build/flanterm/%.c.o: flanterm/%.c
-	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c $< -o $@ 
-
 iso_root/EFI/boot/% : limine/%
 	@mkdir -p $(@D)
 	cp $< $@
