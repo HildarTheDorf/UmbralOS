@@ -21,6 +21,8 @@ ESP_BINARIES := BOOTIA32.EFI BOOTX64.EFI
 LIMINE_BINARIES := limine-bios-cd.bin limine-bios.sys limine-uefi-cd.bin
 BOOT_FILES := $(ESP_BINARIES:%=$(ESP_DIR)/%) $(LIMINE_BINARIES:%=$(LIMINE_BOOT_DIR)/%)
 
+OVMF_DIR := /usr/share/OVMF
+
 .PHONY: all clean clean-nvs run run-bochs run-kvm run-uefi
 
 all: umbralos.iso
@@ -43,10 +45,13 @@ run-kvm: umbralos.iso
 	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -cdrom $<
 
 run-uefi: umbralos.iso OVMF_VARS.fd
-	$(QEMU) $(QEMU_FLAGS) -cpu host --enable-kvm -drive if=pflash,file=/usr/share/OVMF/OVMF_CODE_4M.fd,format=raw,readonly=on,unit=0 -drive if=pflash,file=OVMF_VARS.fd,format=raw,unit=1 -cdrom $<
+	$(QEMU) $(QEMU_FLAGS) \
+		-drive if=pflash,file=$(OVMF_DIR)/OVMF_CODE_4M.fd,format=raw,readonly=on,unit=0 \
+		-drive if=pflash,file=OVMF_VARS.fd,format=raw,unit=1 \
+		-cpu host --enable-kvm -cdrom $<
 
 OVMF_VARS.fd:
-	cp /usr/share/OVMF/OVMF_VARS_4M.fd OVMF_VARS.fd
+	cp $(OVMF_DIR)/OVMF_VARS_4M.fd OVMF_VARS.fd
 
 build/%.s.o: src/%.s
 	@mkdir -p $(@D)
