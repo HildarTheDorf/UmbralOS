@@ -65,11 +65,11 @@ build/flanterm/%.c.o: flanterm/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
-iso_root/EFI/boot/% : /usr/local/share/limine/%
+iso_root/EFI/boot/% : limine/%
 	@mkdir -p $(@D)
 	cp $< $@
 
-iso_root/boot/limine/% : /usr/local/share/limine/%
+iso_root/boot/limine/% : limine/%
 	@mkdir -p $(@D)
 	cp $< $@
 
