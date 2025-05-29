@@ -2,7 +2,7 @@
 -Wall
 -Wextra
 -Wpedantic
--I.
+-Isrc
 -isystemlimine
 -nostdlib
 -ffreestanding
