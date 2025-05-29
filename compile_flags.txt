@@ -3,7 +3,7 @@
 -Wextra
 -Wpedantic
 -I.
--isystem limine
+-isystemlimine
 -nostdlib
 -ffreestanding
 -mno-sse
