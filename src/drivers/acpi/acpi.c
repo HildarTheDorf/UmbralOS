@@ -1,5 +1,4 @@
-#include "acpi.h"
-#include "internal/acpi.h"
+#include "internal.h"
 
 #include "common.h"
 #include "mm.h"
@@ -19,7 +18,7 @@ struct [[gnu::packed]] XSDP {
 
     uint32_t length;
     phy_t xsdt_address;
-    uint8_t extended_checksum;
+    uint8_t checksum;
     uint8_t reserved[3];
 };
 
@@ -32,8 +31,6 @@ struct [[gnu::packed]] XSDT {
     struct SDTHeader h;
     phy_t sdt64[];
 };
-
-const struct MADT *ACPI_MADT;
 
 static void validate_sdt(const struct SDTHeader *pSDT) {
     uint8_t checksum = 0;
@@ -61,17 +58,22 @@ static void validate_xsdp(const struct XSDP *pXSDP) {
 
 static void parse_sdt(const struct SDTHeader *pSDT) {
     validate_sdt(pSDT);
-    if (!strncmp(pSDT->signature, "APIC", 4)) {
+
+    const char *const signature = pSDT->signature;
+    if (!strncmp(signature, "APIC", 4)) {
         acpi_parse_madt((const void *)pSDT);
+    } else if (!strncmp(signature, "FACP", 4)) {
+        acpi_parse_fadt((const void *)pSDT);
     }
 }
 
-void acpi_parse_rsdp(const void *pRSDP) {
-    const struct XSDP *pXSDP = pRSDP;
-    validate_rsdp(&pXSDP->rsdp);
+void acpi_parse_rsdp(const void *p) {
+    const struct RSDP *pRSDP = p;
+    validate_rsdp(pRSDP);
 
-    bool has_xsdp = pXSDP->rsdp.revision > 0;
+    bool has_xsdp = pRSDP->revision > 0;
     if (has_xsdp) {
+        const struct XSDP *pXSDP = p;
         validate_xsdp(pXSDP);
 
         const struct XSDT *pXSDT = phy_to_virt(pXSDP->xsdt_address);
@@ -82,7 +84,7 @@ void acpi_parse_rsdp(const void *pRSDP) {
             parse_sdt(phy_to_virt(pXSDT->sdt64[i]));
         }
     } else {
-        const struct RSDT *pRSDT = phy_to_virt(pXSDP->rsdp.rsdt_address);
+        const struct RSDT *pRSDT = phy_to_virt(pRSDP->rsdt_address);
         validate_sdt(&pRSDT->h);
 
         const size_t num_sdts = (pRSDT->h.length - offsetof(struct RSDT, sdt32)) / sizeof(phy32_t);

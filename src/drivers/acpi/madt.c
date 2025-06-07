@@ -1,5 +1,5 @@
 #include "madt.h"
-#include "internal/acpi.h"
+#include "internal.h"
 
 #include "common.h"
 #include "drivers/pic/8259.h"
@@ -7,23 +7,21 @@
 #include "drivers/pic/lapic.h"
 #include "intel.h"
 
-void acpi_parse_madt(const struct MADT *pMADT) {
+#define PCAT_COMPAT (1 << 0)
 
+void acpi_parse_madt(const struct MADT *pMADT) {
     lapic_init_begin();
+
+    if (pMADT->flags & PCAT_COMPAT) {
+        legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);
+    }
 
     const struct MADTEntryHeader *madt_entry;
     for (uint32_t i = 0; madt_entry = (const void *)&pMADT->records[i], i + offsetof(struct MADT, records) < pMADT->h.length; i += ((const struct MADTEntryHeader *)&pMADT->records[i])->length) {
         switch (madt_entry->type) {
-        case 0: {
-            const struct MADTProcessorLocalAPIC *madt_lapic = (const void *)madt_entry;
-            if (madt_lapic->processor_id == 0) {
-                // BSP
-                if (madt_lapic->flags & 0x1) {
-                    legacy_pic_init_and_disable(IDT_IDX_LEGACY_PIC_MASTER_BASE, IDT_IDX_LEGACY_PIC_SLAVE_BASE);
-                }
-            }
+        case 0: 
+            // Processor Local APIC
             break;
-        }
         case 1: {
             const struct MADTIOAPIC *madt_ioapic =  (const void *)madt_entry;
             ioapic_init_register(madt_ioapic);
@@ -49,6 +47,5 @@ void acpi_parse_madt(const struct MADT *pMADT) {
         }
     }
 
-    lapic_init_finalize();
     ioapic_init_finalize();
 }

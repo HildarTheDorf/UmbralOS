@@ -14,4 +14,13 @@ struct [[gnu::packed]] SDTHeader {
     uint32_t creator_revision;
 };
 
-void acpi_parse_rsdp(const void *pRSDP);
+struct [[gnu::packed]] GenericAddress
+{
+    uint8_t AddressSpace;
+    uint8_t BitWidth;
+    uint8_t BitOffset;
+    uint8_t AccessSize;
+    uint64_t Address;
+};
+
+void acpi_parse_rsdp(const void *p);

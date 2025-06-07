@@ -15,13 +15,6 @@ struct [[gnu::packed]] MADTEntryHeader {
     uint8_t length;
 };
 
-struct [[gnu::packed]] MADTProcessorLocalAPIC {
-    struct MADTEntryHeader h;
-    uint8_t processor_id;
-    uint8_t apic_id;
-    uint32_t flags;
-};
-
 struct [[gnu::packed]] MADTIOAPIC {
     struct MADTEntryHeader h;
     uint8_t apic_id;
