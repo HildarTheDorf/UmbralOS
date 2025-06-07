@@ -7,7 +7,8 @@ QEMU := qemu-system-x86_64
 QEMU_FLAGS := --no-reboot --no-shutdown -machine smm=off -d int -D qemu.log --serial stdio
 
 ASM_SOURCES := gdt.s interrupt.s main.s
-C_SOURCES := common.c gdt.c intel.c interrupt.c main.c mm.c security.c serial.c \
+C_SOURCES := common.c gdt.c intel.c interrupt.c main.c mm.c security.c \
+	drivers/ps2.c drivers/serial.c \
 	drivers/acpi/acpi.c drivers/acpi/fadt.c drivers/acpi/madt.c \
 	drivers/pic/8259.c drivers/pic/ioapic.c drivers/pic/lapic.c
 FLANTERM_SOURCES := flanterm.c flanterm_backends/fb.c

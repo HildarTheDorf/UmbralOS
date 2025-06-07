@@ -4,9 +4,10 @@
 #include "interrupt.h"
 #include "mm.h"
 #include "security.h"
-#include "serial.h"
 
 #include "drivers/acpi/acpi.h"
+#include "drivers/ps2.h"
+#include "drivers/serial.h"
 
 #include "flanterm.h"
 #include "flanterm_backends/fb.h"
@@ -77,7 +78,7 @@ static void fp_init(void) {
 [[noreturn]]
 void main(void *stack_origin) {
     security_init();
-    serial_init();
+    serial_early_init();
     kprint_configure(serial_write);
     kprint("Kernel Base: 0x%lx\n", limine_kernel_address_request.response->virtual_base);
 
@@ -116,6 +117,8 @@ void main(void *stack_origin) {
     pmm_zero();
 #endif
 
+    serial_init();
+    ps2_init(); // Should probabally check the i8042 controller actually exists
     fp_init();
 
     __asm("int $3");

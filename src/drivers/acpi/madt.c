@@ -46,6 +46,4 @@ void acpi_parse_madt(const struct MADT *pMADT) {
             panic("Unknown MADT struct %u", madt_entry->type);
         }
     }
-
-    ioapic_init_finalize();
 }

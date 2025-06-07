@@ -72,17 +72,17 @@ static void ioapic_disable_interrupt(uint8_t vector) {
     ioapic_write64(IOAPIC_REDIR_TBL_ADDR(vector), IOAPIC_REDIR_TBL_MASKED);
 }
 
-static void ioapic_enable_isa_interrupt(uint8_t vector) {
-    const uint8_t i = vector - IDT_IDX_ISA_BASE;
+void ioapic_enable_isa_interrupt(uint8_t irq) {
+    const uint8_t vector = irq + IDT_IDX_ISA_BASE;
 
     uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_FIXED(vector);
-    if (ISA_REDIRECTION_ENTRY[i].is_active_low) {
+    if (ISA_REDIRECTION_ENTRY[irq].is_active_low) {
         value |= IOAPIC_REDIR_TBL_POLARITY;
     }
-    if (ISA_REDIRECTION_ENTRY[i].is_level_triggered) {
+    if (ISA_REDIRECTION_ENTRY[irq].is_level_triggered) {
         value |= IOAPIC_REDIR_TBL_TRIGGER;
     }
-    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(ISA_REDIRECTION_ENTRY[i].destination), value);
+    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(ISA_REDIRECTION_ENTRY[irq].destination), value);
 }
 
 void ioapic_init_register(const struct MADTIOAPIC *madt_ioapic) {
@@ -126,8 +126,3 @@ void ioapic_init_source_override(const struct MADTInterruptSourceOverride *madt_
     ISA_REDIRECTION_ENTRY[madt_override->irq_source].is_level_triggered = trigger == 0x3;
 }
 
-void ioapic_init_finalize(void) {
-    ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
-    ioapic_enable_isa_interrupt(IDT_IDX_ISA_COM1);
-    ioapic_enable_isa_interrupt(IDT_IDX_ISA_MOUSE);
-}

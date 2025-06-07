@@ -1,8 +1,9 @@
 #include "common.h"
 #include "drivers/pic/lapic.h"
+#include "drivers/ps2.h"
+#include "drivers/serial.h"
 #include "intel.h"
 #include "security.h"
-#include "serial.h"
 
 #define FOR_EACH_INTERRUPT \
     I(0) \
@@ -413,21 +414,16 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
     case IDT_IDX_LEGACY_PIC_SLAVE_BASE + 7:
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
         break;
-    case IDT_IDX_ISA_KB:
-        kprint("Got Interrupt from PS/2 KB (0x%u)\n", inb(0x60));
+    case IDT_IDX_ISA_BASE + IRQ_KB:
+        ps2_handle_kb_interrupt();
         lapic_eoi();
         break;
-    case IDT_IDX_ISA_COM1:
-        const char c = serial_read();
-        if (c == '\r') {
-            kprint("\n");
-        } else {
-            kprint("%c", c);
-        }
+    case IDT_IDX_ISA_BASE + IRQ_COM1:
+        serial_handle_interrupt();
         lapic_eoi();
         break;
-    case IDT_IDX_ISA_MOUSE:
-        kprint("Got Interrupt from PS/2 Mouse (0x%u)\n", inb(0x60));
+    case IDT_IDX_ISA_BASE + IRQ_MOUSE:
+        ps2_handle_mouse_interrupt();
         lapic_eoi();
         break;
     case IDT_IDX_LAPIC_SPURIOUS:
