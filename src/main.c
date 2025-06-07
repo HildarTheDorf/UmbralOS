@@ -8,8 +8,8 @@
 
 #include "drivers/acpi/acpi.h"
 
-#include "flanterm/flanterm.h"
-#include "flanterm/backends/fb.h"
+#include "flanterm.h"
+#include "flanterm_backends/fb.h"
 
 #define DEFAULT_STACK_SIZE 0x10000
 

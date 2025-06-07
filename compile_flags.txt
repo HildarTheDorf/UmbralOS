@@ -4,6 +4,7 @@
 -Wpedantic
 -Isrc
 -isystemlimine
+-isystemflanterm/src
 -nostdlib
 -ffreestanding
 -mno-sse

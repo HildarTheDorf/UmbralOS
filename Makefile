@@ -10,7 +10,7 @@ ASM_SOURCES := gdt.s interrupt.s main.s
 C_SOURCES := common.c gdt.c intel.c interrupt.c main.c mm.c security.c serial.c \
 	drivers/acpi/acpi.c drivers/acpi/madt.c \
 	drivers/pic/8259.c drivers/pic/ioapic.c drivers/pic/lapic.c
-FLANTERM_SOURCES := flanterm.c backends/fb.c
+FLANTERM_SOURCES := flanterm.c flanterm_backends/fb.c
 
 ASM_OBJECTS := $(ASM_SOURCES:%.s=build/%.s.o)
 C_OBJECTS := $(C_SOURCES:%.c=build/%.c.o)
@@ -60,6 +60,10 @@ build/%.s.o: src/%.s
 	$(CC) $(ASMFLAGS) -c $< -o $@ 
 
 build/%.c.o: src/%.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $< -o $@ 
+
+build/flanterm/%.c.o: flanterm/src/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
