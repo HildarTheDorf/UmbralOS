@@ -99,8 +99,8 @@ void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
         const uint8_t trigger = (madt_localapicnmi->flags >> 2) & 0x3;
 
         uint32_t lvt = LAPIC_LVT_DELIVERY_NMI;
-        if (polarity) lvt |= LAPIC_LVT_POLARITY;
-        if (trigger) lvt |= LAPIC_LVT_TRIGGER;
+        if (polarity == 0x3) lvt |= LAPIC_LVT_POLARITY;
+        if (trigger == 0x3) lvt |= LAPIC_LVT_TRIGGER;
 
         if (madt_localapicnmi->lint) {
             lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, lvt);
