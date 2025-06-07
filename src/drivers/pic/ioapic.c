@@ -44,13 +44,6 @@ static struct redirection_entry ISA_REDIRECTION_ENTRY[16] = {
     [15] = {.destination = 15},
 };
 
-static struct {
-    uint16_t destination;
-    bool is_level_triggered;
-    bool is_active_low;
-    bool is_valid;
-} IOAPIC_NMI_REDIRECTION;
-
 static uint32_t ioapic_read32(uint8_t reg) {
     // IOAPIC registers are 16-byte aligned but should be accessed using 32-bit ops
     *(volatile uint32_t *)IOAPIC_BASE = reg;
@@ -79,17 +72,6 @@ static void ioapic_disable_interrupt(uint8_t vector) {
     ioapic_write64(IOAPIC_REDIR_TBL_ADDR(vector), IOAPIC_REDIR_TBL_MASKED);
 }
 
-static void ioapic_enable_nmi_interrupt(void) {
-    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_NMI;
-    if (IOAPIC_NMI_REDIRECTION.is_active_low) {
-        value |= IOAPIC_REDIR_TBL_POLARITY;
-    }
-    if (IOAPIC_NMI_REDIRECTION.is_level_triggered) {
-        value |= IOAPIC_REDIR_TBL_TRIGGER;
-    }
-    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(IOAPIC_NMI_REDIRECTION.destination), value);
-}
-
 static void ioapic_enable_isa_interrupt(uint8_t vector) {
     const uint8_t i = vector - IDT_IDX_ISA_BASE;
 
@@ -109,16 +91,28 @@ void ioapic_init_register(const struct MADTIOAPIC *madt_ioapic) {
 
     IOAPIC_BASE = phy_to_virt(madt_ioapic->address);
     vmm_map_unaligned(madt_ioapic->address, IOAPIC_BASE, 0x20, M_CACHE_UC | M_W);
+
+    const uint32_t ioapicver = ioapic_read32(IOAPICVER);
+    const uint8_t num_ioapic_entries = (ioapicver >> IOAPICVER_MAXENTRY_SHIFT) & 0xFF;
+    if (num_ioapic_entries < 16) panic("I/O APIC has too few pins to cover all ISA IRQs");
+
+    for (uint8_t i = 0; i < num_ioapic_entries; ++i) {
+        ioapic_disable_interrupt(i);
+    }
 }
 
 void ioapic_init_nmisource(const struct MADTNMISource *madt_nmisource) {
     const uint8_t polarity = (madt_nmisource->flags >> 0) & 0x3;
     const uint8_t trigger = (madt_nmisource->flags >> 2) & 0x3;
 
-    IOAPIC_NMI_REDIRECTION.destination = madt_nmisource->global_system_interrupt;
-    IOAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
-    IOAPIC_NMI_REDIRECTION.is_level_triggered = trigger == 0x3;
-    IOAPIC_NMI_REDIRECTION.is_valid = true;
+    uint32_t value = IOAPIC_REDIR_TBL_DELIVERY_NMI;
+    if (polarity) {
+        value |= IOAPIC_REDIR_TBL_POLARITY;
+    }
+    if (trigger) {
+        value |= IOAPIC_REDIR_TBL_TRIGGER;
+    }
+    ioapic_write64(IOAPIC_REDIR_TBL_ADDR(madt_nmisource->global_system_interrupt), value);
 }
 
 void ioapic_init_source_override(const struct MADTInterruptSourceOverride *madt_override) {
@@ -133,17 +127,6 @@ void ioapic_init_source_override(const struct MADTInterruptSourceOverride *madt_
 }
 
 void ioapic_init_finalize(void) {
-    const uint32_t ioapicver = ioapic_read32(IOAPICVER);
-    const uint8_t num_ioapic_entries = (ioapicver >> IOAPICVER_MAXENTRY_SHIFT) & 0xFF;
-    if (num_ioapic_entries < 16) panic("I/O APIC has too few pins to cover all ISA IRQs");
-
-    for (uint8_t i = 0; i < num_ioapic_entries; ++i) {
-        ioapic_disable_interrupt(i);
-    }
-
-    if (IOAPIC_NMI_REDIRECTION.is_valid) {
-        ioapic_enable_nmi_interrupt();
-    }
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_KB);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_COM1);
     ioapic_enable_isa_interrupt(IDT_IDX_ISA_MOUSE);
