@@ -1,6 +1,7 @@
 #include "common.h"
 
-#include <stdbool.h>
+#include "interrupt.h"
+
 #include <stdint.h>
 
 #define NUM_BUF_LEN 20
@@ -76,7 +77,7 @@ void halt(void) {
 
 [[noreturn]]
 void halt_and_catch_fire(void) {
-    __asm("cli");
+    disable_interrupts();
     halt();
 }
 

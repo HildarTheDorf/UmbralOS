@@ -354,6 +354,10 @@ static const char *vector_to_menemonic(uint8_t vector) {
     }
 }
 
+void disable_interrupts(void) {
+    __asm("cli");
+}
+
 void enable_interrupts(void) {
     __asm("sti");
 }
