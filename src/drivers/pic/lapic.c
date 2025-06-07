@@ -49,6 +49,7 @@ static uint32_t lapic_read(uint8_t reg) {
 
 static void lapic_write(uint8_t reg, uint32_t value) {
     if (reg > LAPIC_REGISTER_MAX) panic("lapic_write: LAPIC Register 0x%x out of range", reg);
+
     if (HAS_X2APIC) {
         wrmsr(MSR_X2APIC_BASE + reg, value);
     } else {
