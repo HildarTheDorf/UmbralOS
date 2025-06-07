@@ -107,6 +107,7 @@ void main(void *stack_origin) {
         kprint_configure(do_flanterm_write);
     }
 
+    if (!limine_rsdp_request.response) panic("No RSDP response from limine");
     acpi_parse_rsdp(phy_to_virt((phy_t)limine_rsdp_request.response->address));
     enable_interrupts();
 
