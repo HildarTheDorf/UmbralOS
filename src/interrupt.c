@@ -1,5 +1,4 @@
 #include "common.h"
-#include "drivers/pic/ioapic.h"
 #include "drivers/pic/lapic.h"
 #include "intel.h"
 #include "security.h"
