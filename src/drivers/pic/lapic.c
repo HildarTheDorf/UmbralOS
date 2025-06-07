@@ -23,19 +23,15 @@
 #define LAPIC_LVT_DELIVERY_EXTINT (0b111 << 8)
 #define LAPIC_LVT_DELIVERY_INIT (0b101 << 8)
 
+#define LAPIC_LVT_POLARITY (1 << 13)
+#define LAPIC_LVT_TRIGGER (1 << 5)
+
 #define LAPIC_LVT_MASK (1 << 16)
 
 #define LAPIC_SPIV_ENABLE 0x100
 
 static bool HAS_X2APIC;
 static void *LAPIC_BASE;
-
-struct LAPICNMIRedirectionInfo {
-    uint8_t lint;
-    bool is_level_triggered;
-    bool is_active_low;
-    bool is_valid;
-} LAPIC_NMI_REDIRECTION;
 
 static volatile uint32_t *xapic1_get_register(uint8_t reg) {
     return (void *)((uintptr_t)LAPIC_BASE + reg * LAPIC_REGISTER_SIZE);
@@ -92,6 +88,8 @@ void lapic_init_begin(void) {
     lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_LVT_ERROR, LAPIC_LVT_MASK);
+
+    lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
 }
 
 void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
@@ -100,21 +98,15 @@ void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
         const uint8_t polarity = (madt_localapicnmi->flags >> 0) & 0x3;
         const uint8_t trigger = (madt_localapicnmi->flags >> 2) & 0x3;
 
-        LAPIC_NMI_REDIRECTION.lint = madt_localapicnmi->lint;
-        LAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
-        LAPIC_NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
-        LAPIC_NMI_REDIRECTION.is_valid = true;
-    }
-}
+        uint32_t lvt = LAPIC_LVT_DELIVERY_NMI;
+        if (polarity) lvt |= LAPIC_LVT_POLARITY;
+        if (trigger) lvt |= LAPIC_LVT_TRIGGER;
 
-void lapic_init_finalize(void) {
-    if (LAPIC_NMI_REDIRECTION.is_valid) {
-        if (LAPIC_NMI_REDIRECTION.lint == 0) {
-            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_NMI);
+        if (madt_localapicnmi->lint) {
+            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, lvt);
         } else {
-            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
+            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, lvt);
         }
     }
-
-    lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
 }
+
