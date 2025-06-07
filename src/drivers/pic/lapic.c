@@ -85,6 +85,13 @@ void lapic_init_begin(void) {
         vmm_map_unaligned(lapic_base_phy, lapic_base_virt, LAPIC_REGISTER_MAX * LAPIC_REGISTER_SIZE, M_W);
         LAPIC_BASE = lapic_base_virt;
     }
+
+    lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_THERM, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_PERFC, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_MASK);
+    lapic_write(LAPIC_REGISTER_IDX_LVT_ERROR, LAPIC_LVT_MASK);
 }
 
 void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
@@ -101,20 +108,13 @@ void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
 }
 
 void lapic_init_finalize(void) {
-    if (!LAPIC_NMI_REDIRECTION.is_valid) {
-        panic("No Local APIC NMI in MADT, will not be able to configure lapic");
+    if (LAPIC_NMI_REDIRECTION.is_valid) {
+        if (LAPIC_NMI_REDIRECTION.lint == 0) {
+            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_NMI);
+        } else {
+            lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
+        }
     }
 
-    lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);
-    lapic_write(LAPIC_REGISTER_IDX_LVT_THERM, LAPIC_LVT_MASK);
-    lapic_write(LAPIC_REGISTER_IDX_LVT_PERFC, LAPIC_LVT_MASK);
-    if (LAPIC_NMI_REDIRECTION.lint == 0) {
-        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_NMI);
-        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_EXTINT);
-    } else {
-        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT0, LAPIC_LVT_DELIVERY_EXTINT);
-        lapic_write(LAPIC_REGISTER_IDX_LVT_LINT1, LAPIC_LVT_DELIVERY_NMI);
-    }
-    lapic_write(LAPIC_REGISTER_IDX_LVT_ERROR, LAPIC_LVT_MASK);
     lapic_write(LAPIC_REGISTER_IDX_SPIV, LAPIC_SPIV_ENABLE | 0xFF);
 }
