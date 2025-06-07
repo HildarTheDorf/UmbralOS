@@ -1,4 +1,5 @@
 #include "acpi.h"
+#include "internal/acpi.h"
 
 #include "common.h"
 #include "mm.h"
@@ -61,7 +62,7 @@ static void validate_xsdp(const struct XSDP *pXSDP) {
 static void parse_sdt(const struct SDTHeader *pSDT) {
     validate_sdt(pSDT);
     if (!strncmp(pSDT->signature, "APIC", 4)) {
-        ACPI_MADT = (const void *)pSDT;
+        acpi_parse_madt((const void *)pSDT);
     }
 }
 

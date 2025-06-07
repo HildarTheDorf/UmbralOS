@@ -1,6 +1,5 @@
 #include "lapic.h"
 
-#include "apic_common.h"
 #include "common.h"
 #include "intel.h"
 #include "mm.h"
@@ -30,7 +29,13 @@
 
 static bool HAS_X2APIC;
 static void *LAPIC_BASE;
-struct LAPICNMIRedirectionInfo LAPIC_NMI_REDIRECTION;
+
+struct LAPICNMIRedirectionInfo {
+    uint8_t lint;
+    bool is_level_triggered;
+    bool is_active_low;
+    bool is_valid;
+} LAPIC_NMI_REDIRECTION;
 
 static volatile uint32_t *xapic1_get_register(uint8_t reg) {
     return (void *)((uintptr_t)LAPIC_BASE + reg * LAPIC_REGISTER_SIZE);
@@ -59,7 +64,7 @@ void lapic_eoi(void) {
     lapic_write(LAPIC_REGISTER_IDX_EOI, 0);
 }
 
-void lapic_init(void) {
+void lapic_init_begin(void) {
     const struct cpuid_result cpuid_result = cpuid(1, 0);
     HAS_X2APIC = !!(cpuid_result.ecx & CPUID_1_ECX_X2APIC);
 
@@ -79,6 +84,25 @@ void lapic_init(void) {
         void *lapic_base_virt = phy_to_virt(lapic_base_phy);
         vmm_map_unaligned(lapic_base_phy, lapic_base_virt, LAPIC_REGISTER_MAX * LAPIC_REGISTER_SIZE, M_W);
         LAPIC_BASE = lapic_base_virt;
+    }
+}
+
+void lapic_init_nmi(const struct MADTLocalAPICNMI *madt_localapicnmi) {
+    if (madt_localapicnmi->processor_id == 0 || madt_localapicnmi->processor_id == 0xFF) {
+        // BSP or ALL_CPUS
+        const uint8_t polarity = (madt_localapicnmi->flags >> 0) & 0x3;
+        const uint8_t trigger = (madt_localapicnmi->flags >> 2) & 0x3;
+
+        LAPIC_NMI_REDIRECTION.lint = madt_localapicnmi->lint;
+        LAPIC_NMI_REDIRECTION.is_active_low = polarity == 0x3;
+        LAPIC_NMI_REDIRECTION.is_level_triggered= trigger == 0x3;
+        LAPIC_NMI_REDIRECTION.is_valid = true;
+    }
+}
+
+void lapic_init_finalize(void) {
+    if (!LAPIC_NMI_REDIRECTION.is_valid) {
+        panic("No Local APIC NMI in MADT, will not be able to configure lapic");
     }
 
     lapic_write(LAPIC_REGISTER_IDX_LVT_TIMER, LAPIC_LVT_MASK);

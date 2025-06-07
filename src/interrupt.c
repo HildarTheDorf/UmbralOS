@@ -354,10 +354,7 @@ static const char *vector_to_menemonic(uint8_t vector) {
     }
 }
 
-void configure_interrupts(void) {
-    lapic_init();
-    ioapic_init();
-
+void enable_interrupts(void) {
     __asm("sti");
 }
 

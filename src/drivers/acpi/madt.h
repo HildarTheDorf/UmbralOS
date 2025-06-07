@@ -1,18 +1,7 @@
 #pragma once
 
+#include "acpi.h"
 #include "mm.h"
-
-struct [[gnu::packed]] SDTHeader {
-    char signature[4];
-    uint32_t length;
-    uint8_t revision;
-    uint8_t checksum;
-    char oem_id[6];
-    char oem_table_id[8];
-    uint32_t oem_revision;
-    uint32_t creator_id;
-    uint32_t creator_revision;
-};
 
 struct [[gnu::packed]] MADT {
     struct SDTHeader h;
@@ -62,6 +51,3 @@ struct [[gnu::packed]] MADTLocalAPICNMI {
     uint8_t lint;
 };
 
-extern const struct MADT *ACPI_MADT;
-
-void acpi_parse_rsdp(const void *pRSDP);

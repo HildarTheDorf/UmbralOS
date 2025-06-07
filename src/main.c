@@ -1,4 +1,3 @@
-#include "acpi.h"
 #include "common.h"
 #include "gdt.h"
 #include "intel.h"
@@ -6,6 +5,8 @@
 #include "mm.h"
 #include "security.h"
 #include "serial.h"
+
+#include "drivers/acpi/acpi.h"
 
 #include "flanterm/flanterm.h"
 #include "flanterm/backends/fb.h"
@@ -107,7 +108,7 @@ void main(void *stack_origin) {
     }
 
     acpi_parse_rsdp(phy_to_virt((phy_t)limine_rsdp_request.response->address));
-    configure_interrupts();
+    enable_interrupts();
 
     pmm_reclaim(limine_memmap_request.response, stack_origin, DEFAULT_STACK_SIZE);
 #ifdef DEBUG_CHECKS
