@@ -7,6 +7,19 @@
 #define DATA_PORT 0x60
 #define COMMAND_STATUS_PORT 0x64
 
+typedef void f_ps2_driver(uint8_t data);
+
+static f_ps2_driver *PORT1_DRIVER;
+static f_ps2_driver *PORT2_DRIVER;
+
+static uint8_t poll_reply() {
+    while (!(inb(COMMAND_STATUS_PORT) & (1 << 0)));
+
+    const uint8_t ret = inb(DATA_PORT);
+    kprint("0x%x\n", ret);
+    return ret;
+}
+
 static void send_command_noreply(uint8_t command) {
     outb(COMMAND_STATUS_PORT, command);
 }
@@ -14,6 +27,11 @@ static void send_command_noreply(uint8_t command) {
 static uint8_t send_command(uint8_t command) {
     outb(COMMAND_STATUS_PORT, command);
     return inb(DATA_PORT);
+}
+
+static void send_to_device(uint8_t value) {
+    while (inb(COMMAND_STATUS_PORT) & (1 << 1));
+    outb(DATA_PORT, value);
 }
 
 static void write_config_byte(uint8_t config) {
@@ -38,7 +56,10 @@ void ps2_init(void) {
 
     // Self Test
     const uint8_t self_test_result = send_command(0xAA);
-    if (self_test_result != 0x55) panic("PS/2 self test failed");
+    if (self_test_result != 0x55) {
+        kprint("PS/2 self test failed with 0x%x.\nSkipping activation of PS/2 input devices.\n", self_test_result);
+        return;
+    }
 
     // Set config byte again for buggy chips
     write_config_byte(config);
@@ -46,6 +67,7 @@ void ps2_init(void) {
     // Determine if there is a second channel (mouse)
     send_command_noreply(0xA8);
     config = send_command(0x20);
+
     bool has_kb = true;
     bool has_mouse = !(config & (1 << 5));
 
@@ -75,16 +97,46 @@ void ps2_init(void) {
     if (has_mouse) config |= 0b10;
     write_config_byte(config);
 
+    // Reset devices and enable scanning
+    if (has_kb) {
+        kprint("KB RESET\n");
+        send_to_device(0xFF);
+        poll_reply();
+        poll_reply();
+
+        kprint("KB Enable Scanning\n");
+        send_to_device(0xF4);
+        poll_reply();
+    }
+
+    if (has_mouse) {
+        kprint("MOUSE RESET\n");
+        send_command_noreply(0xD4);
+        send_to_device(0xFF);
+        poll_reply();
+        poll_reply();
+        poll_reply();
+
+        kprint("MOUSE Enable Scanning\n");
+        send_command_noreply(0xD4);
+        send_to_device(0xF4);
+        poll_reply();
+    }
+
     if (has_kb) ioapic_enable_isa_interrupt(IRQ_KB);
     if (has_mouse) ioapic_enable_isa_interrupt(IRQ_MOUSE);
 }
 
-void ps2_handle_kb_interrupt(void) {
+void ps2_handle_port1_interrupt(void) {
     const uint8_t data = inb(DATA_PORT);
-    kprint("PS/2 KB Interrupt (0x%x)\n", data);
+    if (PORT1_DRIVER) {
+        PORT1_DRIVER(data);
+    }
 }
 
-void ps2_handle_mouse_interrupt(void) {
+void ps2_handle_port2_interrupt(void) {
     const uint8_t data = inb(DATA_PORT);
-    kprint("PS/2 Mouse Interrupt (0x%x)\n", data);
+    if (PORT2_DRIVER) {
+        PORT2_DRIVER(data);
+    }
 }

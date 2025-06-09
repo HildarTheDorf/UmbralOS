@@ -415,7 +415,7 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         kprint("Spurious Interrupt 0x%x (Legacy PIC Slave)", vector);
         break;
     case IDT_IDX_ISA_BASE + IRQ_KB:
-        ps2_handle_kb_interrupt();
+        ps2_handle_port1_interrupt();
         lapic_eoi();
         break;
     case IDT_IDX_ISA_BASE + IRQ_COM1:
@@ -423,7 +423,7 @@ void interrupt_handler(uint8_t vector, const struct stack_frame *stack_frame) {
         lapic_eoi();
         break;
     case IDT_IDX_ISA_BASE + IRQ_MOUSE:
-        ps2_handle_mouse_interrupt();
+        ps2_handle_port2_interrupt();
         lapic_eoi();
         break;
     case IDT_IDX_LAPIC_SPURIOUS:
