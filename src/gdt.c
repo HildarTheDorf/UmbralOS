@@ -66,5 +66,5 @@ void load_gdt(void) {
     __asm("lgdt %0" : : "m"(gdtr));
     __asm("lldt %0" : : "rm"(MAKE_DESRIPTOR(GDT_IDX_NULL, PL_KERNEL)));
     __asm("ltr  %0" : : "rm"(MAKE_DESRIPTOR(GDT_IDX_TSS, PL_KERNEL)));
-    flush_gdt(MAKE_DESRIPTOR(GDT_IDX_CODE64, PL_KERNEL), MAKE_DESRIPTOR(GDT_IDX_DATA64, PL_KERNEL));                        
+    flush_gdt(MAKE_DESRIPTOR(GDT_IDX_CODE64, PL_KERNEL), MAKE_DESRIPTOR(GDT_IDX_NULL, PL_KERNEL));                        
 }
