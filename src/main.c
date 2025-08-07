@@ -118,7 +118,7 @@ void main(void *stack_origin) {
 #endif
 
     serial_init();
-    ps2_init(); // Should probabally check the i8042 controller actually exists
+    if (acpi_has_legacy_feature(ACPI_LEGACY_FEATURE_i8042)) { ps2_init(); }
     fp_init();
 
     __asm("int $3");

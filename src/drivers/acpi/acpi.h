@@ -2,6 +2,10 @@
 
 #include <stdint.h>
 
+enum AcpiLegacyFeature {
+    ACPI_LEGACY_FEATURE_i8042
+};
+
 struct [[gnu::packed]] SDTHeader {
     char signature[4];
     uint32_t length;
@@ -23,4 +27,5 @@ struct [[gnu::packed]] GenericAddress
     uint64_t Address;
 };
 
+bool acpi_has_legacy_feature(enum AcpiLegacyFeature feature);
 void acpi_parse_rsdp(const void *p);
