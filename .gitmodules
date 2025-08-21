@@ -1,6 +1,6 @@
 [submodule "flanterm"]
 	path = flanterm
-	url = https://codeberg.org/mintsuki/flanterm.git
+	url = https://github.com/mintsuki/flanterm
 	branch = trunk
 [submodule "limine"]
 	path = limine
