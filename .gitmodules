@@ -1,8 +1,7 @@
 [submodule "flanterm"]
 	path = flanterm
 	url = https://codeberg.org/Mintsuki/Flanterm.git
-	branch = trunk
 [submodule "limine"]
 	path = limine
 	url = https://codeberg.org/Limine/Limine.git
-	branch = v9.x-binary
+	branch = v10.x-binary
