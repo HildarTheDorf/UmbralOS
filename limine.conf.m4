@@ -4,3 +4,4 @@ timeout: 0
 /umbralos
 protocol: limine
 path: boot():/boot/umbralos.bin`#'B2SUM(`iso_root/boot/umbralos.bin')dnl
+kaslr: yes
