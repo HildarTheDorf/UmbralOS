@@ -3,7 +3,7 @@
 -Wextra
 -Wpedantic
 -Isrc
--isystemlimine
+-isystemlimine-protocol/include
 -isystemflanterm/src
 -nostdlib
 -ffreestanding

@@ -15,38 +15,38 @@
 #define DEFAULT_STACK_SIZE 0x10000
 
 [[gnu::used, gnu::section(".limine_requests.start")]]
-static const LIMINE_REQUESTS_START_MARKER
+static const uint64_t limine_start[] = LIMINE_REQUESTS_START_MARKER;
 [[gnu::used, gnu::section(".limine_requests")]]
-static LIMINE_BASE_REVISION(3)
+static uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
 
 [[gnu::used, gnu::section(".limine_requests")]]
 static struct limine_framebuffer_request limine_framebuffer_request = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
     .revision = 1
 };
 
 [[gnu::used, gnu::section(".limine_requests")]]
 static struct limine_hhdm_request limine_hhdm_request = {
-    .id = LIMINE_HHDM_REQUEST
+    .id = LIMINE_HHDM_REQUEST_ID
 };
 
 [[gnu::used, gnu::section(".limine_requests")]]
-static struct limine_kernel_address_request limine_kernel_address_request = {
-    .id = LIMINE_KERNEL_ADDRESS_REQUEST
+static struct limine_executable_address_request limine_executable_address_request = {
+    .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID
 };
 
 [[gnu::used, gnu::section(".limine_requests")]]
 static struct limine_memmap_request limine_memmap_request = {
-    .id = LIMINE_MEMMAP_REQUEST,  
+    .id = LIMINE_MEMMAP_REQUEST_ID,  
 };
 
 [[gnu::used, gnu::section(".limine_requests")]]
 static struct limine_rsdp_request limine_rsdp_request = {
-    .id = LIMINE_RSDP_REQUEST
+    .id = LIMINE_RSDP_REQUEST_ID
 };
 
 [[gnu::used, gnu::section(".limine_requests.end")]]
-static const LIMINE_REQUESTS_END_MARKER
+static const uint64_t limine_end[] = LIMINE_REQUESTS_END_MARKER;
 
 static struct flanterm_context *flanterm_context;
 
@@ -80,13 +80,13 @@ void main(void *stack_origin) {
     security_init();
     serial_early_init();
     kprint_configure(serial_write);
-    kprint("Kernel Base: 0x%lx\n", limine_kernel_address_request.response->virtual_base);
+    kprint("Kernel Base: 0x%lx\n", limine_executable_address_request.response->virtual_base);
 
     load_gdt();
     load_idt();
 
     pmm_init(limine_memmap_request.response, (void *)limine_hhdm_request.response->offset);
-    vmm_init(limine_memmap_request.response, limine_kernel_address_request.response);
+    vmm_init(limine_memmap_request.response, limine_executable_address_request.response);
 
     if (limine_framebuffer_request.response->framebuffer_count > 0) {
         const struct limine_framebuffer *fb = limine_framebuffer_request.response->framebuffers[0];
@@ -103,13 +103,14 @@ void main(void *stack_origin) {
             nullptr, nullptr,
             nullptr, 0, 0, 1,
             0, 0,
-            0
+            0,
+            FLANTERM_FB_ROTATE_0
         );
         kprint_configure(do_flanterm_write);
     }
 
     if (!limine_rsdp_request.response) panic("No RSDP response from limine");
-    acpi_parse_rsdp(phy_to_virt((phy_t)limine_rsdp_request.response->address));
+    acpi_parse_rsdp(limine_rsdp_request.response->address);
     enable_interrupts();
 
     pmm_reclaim(limine_memmap_request.response, stack_origin, DEFAULT_STACK_SIZE);

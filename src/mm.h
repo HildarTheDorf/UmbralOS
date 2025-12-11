@@ -30,6 +30,6 @@ void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, vo
 #ifdef DEBUG_CHECKS
 void pmm_zero(void);
 #endif
-void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response);
+void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_executable_address_response *limine_executable_address_response);
 void vmm_map(phy_t what, void *where, size_t size, enum memory_flags flags);
 void vmm_map_unaligned(phy_t what, void *where, size_t size, enum memory_flags flags);

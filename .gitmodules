@@ -5,3 +5,6 @@
 	path = limine
 	url = https://codeberg.org/Limine/Limine.git
 	branch = v10.x-binary
+[submodule "limine-protocol"]
+	path = limine-protocol
+	url = https://codeberg.org/Limine/limine-protocol

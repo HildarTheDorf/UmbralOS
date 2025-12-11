@@ -260,7 +260,7 @@ void vmm_map_unaligned(phy_t what, void *where, size_t size, enum memory_flags f
     vmm_map(aligned_what, aligned_where, aligned_end - aligned_what, flags);
 }
 
-void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_kernel_address_response *limine_kernel_address_response) {     
+void vmm_init(const struct limine_memmap_response *limine_memmap_response, const struct limine_executable_address_response *limine_executable_address_response) {     
     const struct cpuid_result cpuid_result = cpuid(1, 0);
     if (!(cpuid_result.edx & (1 << 16))) panic("No PAT support");
 
@@ -288,25 +288,28 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         case LIMINE_MEMMAP_RESERVED:
             vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_UC | M_W);
             break;
+        case LIMINE_MEMMAP_ACPI_NVS:
+        case LIMINE_MEMMAP_ACPI_TABLES:
+            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, 0);
+            break;
         case LIMINE_MEMMAP_FRAMEBUFFER:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_WC | M_W);
             break;
-        case LIMINE_MEMMAP_ACPI_NVS:
         case LIMINE_MEMMAP_BAD_MEMORY:
-        case LIMINE_MEMMAP_KERNEL_AND_MODULES:
+        case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES: // Handled below
         default:
             break;
         }
     }
 
-    const Elf64_Ehdr *elf_header = (void *)limine_kernel_address_response->virtual_base;
-    const Elf64_Phdr *elf_phdrs = (void *)(limine_kernel_address_response->virtual_base + elf_header->e_phoff);
+    const Elf64_Ehdr *elf_header = (void *)limine_executable_address_response->virtual_base;
+    const Elf64_Phdr *elf_phdrs = (void *)(limine_executable_address_response->virtual_base + elf_header->e_phoff);
     for (Elf64_Half i = 0; i < elf_header->e_phnum; ++i) {      
         const Elf64_Phdr *phdr = &elf_phdrs[i];
         if (phdr->p_type == PT_LOAD) {
             vmm_map_unaligned(
-                limine_kernel_address_response->physical_base + phdr->p_vaddr,
-                (void *)(limine_kernel_address_response->virtual_base + phdr->p_vaddr),
+                limine_executable_address_response->physical_base + phdr->p_vaddr,
+                (void *)(limine_executable_address_response->virtual_base + phdr->p_vaddr),
                 phdr->p_memsz, elf_to_memory_flags(phdr->p_flags)
             );
         }
@@ -316,8 +319,8 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         const Elf64_Phdr *phdr = &elf_phdrs[i];
         if (phdr->p_type == PT_GNU_RELRO) {
             vmm_map_unaligned(
-                limine_kernel_address_response->physical_base + phdr->p_vaddr,
-                (void *)(limine_kernel_address_response->virtual_base + phdr->p_vaddr),
+                limine_executable_address_response->physical_base + phdr->p_vaddr,
+                (void *)(limine_executable_address_response->virtual_base + phdr->p_vaddr),
                 phdr->p_memsz, elf_to_memory_flags(phdr->p_flags)
             );
         }
