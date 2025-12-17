@@ -279,6 +279,8 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
     for (uint64_t i = 0; i < limine_memmap_response->entry_count; ++i) {
         const struct limine_memmap_entry *limine_memmap_entry = limine_memmap_response->entries[i];
      
+        kprint("0x%lx-0x%lx 0x%lu\n", limine_memmap_entry->base, limine_memmap_entry->base+limine_memmap_entry->length, limine_memmap_entry->type);
+
         switch (limine_memmap_entry->type) {
         case LIMINE_MEMMAP_USABLE:
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
@@ -289,11 +291,13 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
             vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_UC | M_W);
             break;
         case LIMINE_MEMMAP_ACPI_NVS:
-        case LIMINE_MEMMAP_ACPI_TABLES:
-            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, 0);
+            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
             break;
         case LIMINE_MEMMAP_FRAMEBUFFER:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_WC | M_W);
+            break;
+        case LIMINE_MEMMAP_ACPI_TABLES:
+            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
             break;
         case LIMINE_MEMMAP_BAD_MEMORY:
         case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES: // Handled below
