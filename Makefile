@@ -66,7 +66,7 @@ build/%.c.o: src/%.c
 
 build/flanterm/%.c.o: flanterm/src/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c $< -o $@ 
+	$(CC) $(CFLAGS) -DFLANTERM_FB_DISABLE_BUMP_ALLOC -c $< -o $@ 
 
 iso_root/EFI/boot/% : limine/%
 	@mkdir -p $(@D)
