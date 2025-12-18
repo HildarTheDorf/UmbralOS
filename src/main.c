@@ -91,7 +91,7 @@ void main(void *stack_origin) {
     if (limine_framebuffer_request.response->framebuffer_count > 0) {
         const struct limine_framebuffer *fb = limine_framebuffer_request.response->framebuffers[0];
         flanterm_context = flanterm_fb_init(
-            nullptr, nullptr,
+            kalloc, kfree,
             fb->address,
             fb->width, fb->height, fb->pitch,
             fb->red_mask_size, fb->red_mask_shift,

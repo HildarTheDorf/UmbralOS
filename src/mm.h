@@ -22,9 +22,13 @@ enum memory_flags {
 typedef uint32_t phy32_t;
 typedef uint64_t phy_t;
 
+void *kalloc(size_t size);
+void kfree(void *ptr, size_t size);
 void *phy_to_virt(phy_t paddr);
 phy_t pmm_alloc_page(void);
-void pmm_free_page(phy_t);
+phy_t pmm_alloc_pages(size_t num_pages);
+void pmm_free_page(phy_t paddr);
+void pmm_free_pages(phy_t paddr, size_t num_pages);
 void pmm_init(const struct limine_memmap_response *limine_memmap_response, void *phhdm);
 void pmm_reclaim(const struct limine_memmap_response *limine_memmap_response, void *stack_origin, size_t stack_size);
 #ifdef DEBUG_CHECKS

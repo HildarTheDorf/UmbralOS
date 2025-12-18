@@ -80,24 +80,51 @@ static void pmm_mark_range(phy_t base, size_t len, bool usable) {
     }
 }
 
+void *kalloc(size_t size) {
+    kprint("WARNING: kalloc not fully implemented\n");
+    return phy_to_virt(pmm_alloc_pages(round_up(size, PAGE_SIZE) / PAGE_SIZE));
+}
+
+void kfree(void *ptr, size_t size) {
+    kprint("WARNING: kfree not fully implemented\n");
+    pmm_free_pages((uintptr_t)ptr - (uintptr_t)pHHDM, round_up(size, PAGE_SIZE) / PAGE_SIZE);
+}
+
 void *phy_to_virt(phy_t paddr) {
     return (void *)((uintptr_t)pHHDM + paddr);
 }
 
-phy_t pmm_alloc_page(void) {
+phy_t pmm_alloc_pages(size_t num_pages) {
     for (phy_t i = 0; i < PMM_DATA.num_pages; ++i) {
-        const phy_t addr = i * PAGE_SIZE;
-        if (pmm_query_page(addr)) {
-            pmm_mark_page(addr, false);
-            return addr;
+        bool usable = true;
+        for (size_t j = 0; j < num_pages; ++j) {
+            const phy_t addr = (i + j) * PAGE_SIZE;
+            usable &= pmm_query_page(addr);
+        }
+        if (usable) {
+            for (size_t j = 0; j < num_pages; ++j) {
+                const phy_t addr = (i + j) * PAGE_SIZE;
+                pmm_mark_page(addr, false);
+            }
+            return i * PAGE_SIZE;
         }
     }
 
-    panic("pmm_alloc_page: No more pages");
+    panic("pmm_alloc_pages: Could not find %lu contiguous pages", num_pages);
 }
 
-void pmm_free_page(phy_t addr) {
-    pmm_mark_page(addr, true);
+phy_t pmm_alloc_page(void) {
+    return pmm_alloc_pages(1);
+}
+
+void pmm_free_page(phy_t paddr) {
+    pmm_free_pages(paddr, 1);
+}
+
+void pmm_free_pages(phy_t paddr, size_t num_pages) {
+    for (size_t i = 0; i < num_pages; ++i) {
+        pmm_mark_page(paddr + i * PAGE_SIZE, true);
+    }
 }
 
 void pmm_init(const struct limine_memmap_response *limine_memmap_response, void *phhdm) {
@@ -287,7 +314,6 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
             break;
-        case LIMINE_MEMMAP_ACPI_NVS:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
             break;
         case LIMINE_MEMMAP_FRAMEBUFFER:
@@ -297,6 +323,7 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
             vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
             break;
         case LIMINE_MEMMAP_RESERVED:
+        case LIMINE_MEMMAP_ACPI_NVS:
         case LIMINE_MEMMAP_BAD_MEMORY:
         case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES: // Handled below
         default:
