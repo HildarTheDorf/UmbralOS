@@ -35,9 +35,6 @@ clean:
 	rm -rf iso_root
 	rm -f umbralos.iso
 
-clean-deps:
-	cd limine; git clean -xfd; git reset --hard
-
 clean-nvs:
 	rm -f OVMF_VARS.fd
 
