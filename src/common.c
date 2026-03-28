@@ -97,10 +97,16 @@ void kprint(const char *format, ...) {
 [[gnu::format(printf, 1, 0)]]
 void kprintv(const char *format, va_list va) {
     for (const char *p = format; *p; ++p) {
-        if (*p == '%') {
+        switch (*p) {
+        case '%':
             ++p;
             print_escape(&p, va, false);
-        } else {
+            break;
+        case '\n':
+            print_char('\r');
+            print_char('\n');
+            break;
+        default:
             print_char(*p);
         }
     }

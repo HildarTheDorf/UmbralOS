@@ -17,7 +17,7 @@
 [[gnu::used, gnu::section(".limine_requests.start")]]
 static const uint64_t limine_start[] = LIMINE_REQUESTS_START_MARKER;
 [[gnu::used, gnu::section(".limine_requests")]]
-static uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
+static uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
 
 [[gnu::used, gnu::section(".limine_requests")]]
 static struct limine_framebuffer_request limine_framebuffer_request = {

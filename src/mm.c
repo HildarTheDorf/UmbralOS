@@ -314,13 +314,11 @@ void vmm_init(const struct limine_memmap_response *limine_memmap_response, const
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_W);
             break;
-            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
-            break;
         case LIMINE_MEMMAP_FRAMEBUFFER:
             vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_CACHE_WC | M_W);
             break;
-        case LIMINE_MEMMAP_ACPI_TABLES:
-            vmm_map_unaligned(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
+        case LIMINE_MEMMAP_RESERVED_MAPPED:
+            vmm_map(limine_memmap_entry->base, phy_to_virt(limine_memmap_entry->base), limine_memmap_entry->length, M_NONE);
             break;
         case LIMINE_MEMMAP_RESERVED:
         case LIMINE_MEMMAP_ACPI_NVS:
